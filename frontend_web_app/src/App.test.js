@@ -232,14 +232,15 @@ describe('Settings env/config display', () => {
       window.history.pushState({}, '', '/settings');
       render(<App />);
 
-      expect(await screen.findByLabelText('Settings')).toBeInTheDocument();
+      const settingsPage = await screen.findByLabelText('Settings');
+      const settings = within(settingsPage);
 
       // Node env
-      expect(screen.getByText('test')).toBeInTheDocument();
+      expect(settings.getByText('test')).toBeInTheDocument();
 
-      // API base and configured indicator
-      expect(screen.getByText(/Configured/i)).toBeInTheDocument();
-      expect(screen.getByText('http://example.test/api')).toBeInTheDocument();
+      // API base and configured indicator (scope to Settings to avoid TopNav "Backend configured")
+      expect(settings.getByText(/^Configured$/i)).toBeInTheDocument();
+      expect(settings.getByText('http://example.test/api')).toBeInTheDocument();
 
       // WS URL and status (from ws client)
       expect(screen.getByText(/Status: open/i)).toBeInTheDocument();
