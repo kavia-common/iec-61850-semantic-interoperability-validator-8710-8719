@@ -109,10 +109,27 @@ describe('App shell + routing', () => {
 });
 
 describe('File Upload flow (mocked API)', () => {
-  test('selecting a file enables Upload/Validate and calls api.upload/api.request', async () => {
+  test('selecting a file enables Upload/Validate and calls upload + validation start (polling-capable)', async () => {
     const user = userEvent.setup();
 
-    const api = makeApiMock();
+    const api = makeApiMock({
+      // New higher-level helpers used by FileUploadPage. Keep them mocked for deterministic tests.
+      uploadSclFile: jest.fn().mockResolvedValue({
+        ok: true,
+        mocked: true,
+        data: { uploadId: 'mock-1', fileName: 'sample.icd', message: 'uploaded' }
+      }),
+      startValidation: jest.fn().mockResolvedValue({
+        ok: true,
+        mocked: true,
+        data: { validationId: 'val-1' }
+      }),
+      pollValidationUntilDone: jest.fn().mockResolvedValue({
+        ok: true,
+        mocked: true,
+        data: { details: [] }
+      })
+    });
     createApiClient.mockReturnValue(api);
 
     window.history.pushState({}, '', '/upload');
@@ -132,20 +149,17 @@ describe('File Upload flow (mocked API)', () => {
     expect(uploadBtn).toBeEnabled();
     expect(validateBtn).toBeEnabled();
 
-    // Upload triggers api.upload('/upload', file)
+    // Upload triggers api.uploadSclFile(file) when available (new behavior)
     await user.click(uploadBtn);
-    await waitFor(() => expect(api.upload).toHaveBeenCalledTimes(1));
-    expect(api.upload.mock.calls[0][0]).toBe('/upload');
-    expect(api.upload.mock.calls[0][1]).toBe(file);
+    await waitFor(() => expect(api.uploadSclFile).toHaveBeenCalledTimes(1));
+    expect(api.uploadSclFile.mock.calls[0][0]).toBe(file);
 
-    // Validate triggers api.request('/validate', {method:'POST', body:{fileName}})
+    // Validate triggers startValidation + poll (new behavior)
     await user.click(validateBtn);
-    await waitFor(() => expect(api.request).toHaveBeenCalledTimes(1));
-    expect(api.request.mock.calls[0][0]).toBe('/validate');
-    expect(api.request.mock.calls[0][1]).toMatchObject({
-      method: 'POST',
-      body: { fileName: 'sample.icd' }
-    });
+    await waitFor(() => expect(api.startValidation).toHaveBeenCalledTimes(1));
+    expect(api.startValidation.mock.calls[0][0]).toMatchObject({ fileName: 'sample.icd' });
+
+    await waitFor(() => expect(api.pollValidationUntilDone).toHaveBeenCalledTimes(1));
   });
 });
 
