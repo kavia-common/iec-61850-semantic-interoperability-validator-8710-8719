@@ -1,0 +1,4 @@
+{
+    "command": "npm install && npx tsc --noEmit && npm test -- --ci",
+    "working_directory": "/home/kavia/workspace/code-generation/iec-61850-semantic-interoperability-validator-8710-8719/frontend_web_app"
+}
