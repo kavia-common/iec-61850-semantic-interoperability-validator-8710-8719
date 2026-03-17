@@ -1,48 +1,48 @@
-import React, { useState, useEffect } from 'react';
-import logo from './logo.svg';
+import React from 'react';
+import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './App.css';
+import TopNav from './components/TopNav';
+import Sidebar from './components/Sidebar';
+import { AppProvider } from './state/AppContext';
+
+import FileUploadPage from './pages/FileUploadPage';
+import LnTreePage from './pages/LnTreePage';
+import DatasetViewerPage from './pages/DatasetViewerPage';
+import ValidationReportPage from './pages/ValidationReportPage';
+import InteroperabilityMapPage from './pages/InteroperabilityMapPage';
+import ScadaTablePage from './pages/ScadaTablePage';
+import SettingsPage from './pages/SettingsPage';
+import NotFoundPage from './pages/NotFoundPage';
 
 // PUBLIC_INTERFACE
 function App() {
-  const [theme, setTheme] = useState('light');
-
-  // Effect to apply theme to document element
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-  }, [theme]);
-
-  // PUBLIC_INTERFACE
-  const toggleTheme = () => {
-    setTheme(prevTheme => prevTheme === 'light' ? 'dark' : 'light');
-  };
-
+  /** IEC 61850 SIV-Tool main React app: top-nav + sidebar layout with module routing. */
   return (
-    <div className="App">
-      <header className="App-header">
-        <button 
-          className="theme-toggle" 
-          onClick={toggleTheme}
-          aria-label={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
-        >
-          {theme === 'light' ? '🌙 Dark' : '☀️ Light'}
-        </button>
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <p>
-          Current theme: <strong>{theme}</strong>
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AppProvider>
+      <BrowserRouter>
+        <div className="App">
+          <div className="shell">
+            <TopNav />
+            <div className="contentGrid">
+              <Sidebar />
+              <main className="main" role="main">
+                <Routes>
+                  <Route path="/" element={<Navigate to="/upload" replace />} />
+                  <Route path="/upload" element={<FileUploadPage />} />
+                  <Route path="/ln-tree" element={<LnTreePage />} />
+                  <Route path="/datasets" element={<DatasetViewerPage />} />
+                  <Route path="/report" element={<ValidationReportPage />} />
+                  <Route path="/interop-map" element={<InteroperabilityMapPage />} />
+                  <Route path="/scada" element={<ScadaTablePage />} />
+                  <Route path="/settings" element={<SettingsPage />} />
+                  <Route path="*" element={<NotFoundPage />} />
+                </Routes>
+              </main>
+            </div>
+          </div>
+        </div>
+      </BrowserRouter>
+    </AppProvider>
   );
 }
 
