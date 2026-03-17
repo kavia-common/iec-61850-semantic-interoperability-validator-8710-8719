@@ -63,7 +63,9 @@ function isLikelyScadaPointName(s) {
   if (!v) return false;
   // common SCADA-ish: uppercase with underscores/digits, not insanely long
   if (v.length < 3 || v.length > 64) return false;
-  return /^[A-Z0-9_:\-\.]+$/.test(v) && /[A-Z]/.test(v);
+  // NOTE: keep regex simple to avoid eslint no-useless-escape.
+  // Allowed: A-Z 0-9 _ : - .
+  return /^[A-Z0-9_:\-.]+$/.test(v) && /[A-Z]/.test(v);
 }
 
 function isLikelyLnInstance(s) {

@@ -5,6 +5,7 @@ const navItems = [
   { to: '/upload', title: 'File Upload', subtitle: 'Ingest SCL files', icon: 'U' },
   { to: '/ln-tree', title: 'LN Tree', subtitle: 'Browse Logical Nodes', icon: 'L' },
   { to: '/datasets', title: 'Dataset Viewer', subtitle: 'GOOSE/SV datasets', icon: 'D' },
+  { to: '/anomaly', title: 'Anomaly Detection', subtitle: 'Excel outliers', icon: 'A' },
   { to: '/report', title: 'Validation Report', subtitle: 'Issues & recommendations', icon: 'R' },
   { to: '/interop-map', title: 'Interoperability Map', subtitle: 'Cross-vendor mapping', icon: 'M' },
   { to: '/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' }

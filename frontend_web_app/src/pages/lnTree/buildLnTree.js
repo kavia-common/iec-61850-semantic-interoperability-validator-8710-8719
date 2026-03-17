@@ -74,11 +74,11 @@ function parseRef(ref) {
     const up = p.toUpperCase();
     if (up.startsWith('IED')) {
       // "IED1" or "IED: IED1"
-      ied = p.replace(/^IED\s*[:\-]?\s*/i, '').trim() || p;
+      ied = p.replace(/^IED\s*[:-]?\s*/i, '').trim() || p;
       continue;
     }
     if (up.startsWith('LD')) {
-      ld = p.replace(/^LD\s*[:\-]?\s*/i, '').trim() || p;
+      ld = p.replace(/^LD\s*[:-]?\s*/i, '').trim() || p;
       continue;
     }
     // For any unknown segment, keep scanning; LN might be in last segment
@@ -89,7 +89,7 @@ function parseRef(ref) {
   const dotParts = last.split('.').map((p) => p.trim()).filter(Boolean);
 
   // If last looks like "LN: XCBR1 (Circuit Breaker)" extract after "LN:"
-  const mLn = last.match(/LN\s*[:\-]\s*([A-Za-z0-9_]+)/i);
+  const mLn = last.match(/LN\s*[:-]\s*([A-Za-z0-9_]+)/i);
   if (mLn?.[1]) ln = mLn[1];
 
   // Otherwise if first dot segment resembles LN instance e.g., "XCBR1"
@@ -100,7 +100,7 @@ function parseRef(ref) {
   }
 
   // If only one slashPart and it's an IED-ish label, let it be ied
-  if (!ied && slashParts.length === 1 && /^([A-Za-z0-9_\-]+)$/.test(slashParts[0]) && !ln) {
+  if (!ied && slashParts.length === 1 && /^([A-Za-z0-9_-]+)$/.test(slashParts[0]) && !ln) {
     ied = slashParts[0];
   }
 

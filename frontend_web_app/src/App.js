@@ -8,6 +8,7 @@ import { AppProvider } from './state/AppContext';
 import FileUploadPage from './pages/FileUploadPage';
 import LnTreePage from './pages/LnTreePage';
 import DatasetViewerPage from './pages/DatasetViewerPage';
+import AnomalyDetectionPage from './pages/AnomalyDetectionPage';
 import ValidationReportPage from './pages/ValidationReportPage';
 import InteroperabilityMapPage from './pages/InteroperabilityMapPage';
 import ScadaTablePage from './pages/ScadaTablePage';
@@ -31,6 +32,7 @@ function App() {
                   <Route path="/upload" element={<FileUploadPage />} />
                   <Route path="/ln-tree" element={<LnTreePage />} />
                   <Route path="/datasets" element={<DatasetViewerPage />} />
+                  <Route path="/anomaly" element={<AnomalyDetectionPage />} />
                   <Route path="/report" element={<ValidationReportPage />} />
                   <Route path="/interop-map" element={<InteroperabilityMapPage />} />
                   <Route path="/scada" element={<ScadaTablePage />} />
