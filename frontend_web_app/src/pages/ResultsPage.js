@@ -33,24 +33,99 @@ function statusStyle(status) {
   return {};
 }
 
+function asNumberMaybe(v) {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) return Number(v);
+  return null;
+}
+
+function extractAnomaliesFlaggedCount(run) {
+  // Best-effort extraction from persisted summary.
+  // We keep this intentionally defensive because summary shape can evolve.
+  const s = run?.summary;
+  if (!s || typeof s !== 'object') return 0;
+
+  const candidateKeys = [
+    'anomalies',
+    'anomalyCount',
+    'anomaliesFlagged',
+    'flagged',
+    'flaggedCount',
+    'anomalyRows',
+    'outliers',
+    'outlierCount'
+  ];
+
+  for (const k of candidateKeys) {
+    const n = asNumberMaybe(s?.[k]);
+    if (n !== null) return Math.max(0, n);
+  }
+
+  // If summary contains arrays, use their lengths for likely fields.
+  const arrayKeys = ['anomalies', 'outliers', 'flagged', 'rowsFlagged', 'flaggedRows'];
+  for (const k of arrayKeys) {
+    if (Array.isArray(s?.[k])) return s[k].length;
+  }
+
+  return 0;
+}
+
+function formatPct(p) {
+  if (!Number.isFinite(p)) return '—';
+  return `${(p * 100).toFixed(p >= 0.1 ? 0 : 1)}%`;
+}
+
+function kpiDeltaText(mockedCount, totalCount) {
+  if (!totalCount) return '—';
+  if (!mockedCount) return 'All runs used live processing.';
+  return `${mockedCount}/${totalCount} run(s) used offline/mock fallback.`;
+}
+
 // PUBLIC_INTERFACE
 export default function ResultsPage() {
   /** Results page: persisted history of SCL + Excel runs with export as CSV/JSON. */
   const [typeFilter, setTypeFilter] = useState('all');
   const [refreshTick, setRefreshTick] = useState(0);
 
+  const allHistory = useMemo(() => listRunHistory({ limit: 1000 }), [refreshTick]);
+
   const rows = useMemo(() => {
-    const all = listRunHistory({ limit: 200 });
-    if (typeFilter === 'all') return all;
-    return all.filter((r) => r.type === typeFilter);
-  }, [typeFilter, refreshTick]);
+    if (typeFilter === 'all') return allHistory.slice(0, 200);
+    return allHistory.filter((r) => r.type === typeFilter).slice(0, 200);
+  }, [typeFilter, allHistory]);
 
   const counts = useMemo(() => {
-    const all = listRunHistory({ limit: 1000 });
-    const scl = all.filter((r) => r.type === 'scl_validation').length;
-    const xl = all.filter((r) => r.type === 'excel_anomaly').length;
-    return { total: all.length, scl, xl };
-  }, [refreshTick]);
+    const scl = allHistory.filter((r) => r.type === 'scl_validation').length;
+    const xl = allHistory.filter((r) => r.type === 'excel_anomaly').length;
+    return { total: allHistory.length, scl, xl };
+  }, [allHistory]);
+
+  const aggregates = useMemo(() => {
+    const total = allHistory.length;
+    const success = allHistory.filter((r) => r.status === 'success').length;
+    const failed = allHistory.filter((r) => r.status === 'failed').length;
+    const successRate = total ? success / total : NaN;
+
+    const mockedCount = allHistory.filter((r) => r.mocked).length;
+
+    const anomaliesFlagged = allHistory
+      .filter((r) => r.type === 'excel_anomaly')
+      .reduce((acc, r) => acc + extractAnomaliesFlaggedCount(r), 0);
+
+    const scl = {
+      total: allHistory.filter((r) => r.type === 'scl_validation').length,
+      success: allHistory.filter((r) => r.type === 'scl_validation' && r.status === 'success').length,
+      failed: allHistory.filter((r) => r.type === 'scl_validation' && r.status === 'failed').length
+    };
+
+    const excel = {
+      total: allHistory.filter((r) => r.type === 'excel_anomaly').length,
+      success: allHistory.filter((r) => r.type === 'excel_anomaly' && r.status === 'success').length,
+      failed: allHistory.filter((r) => r.type === 'excel_anomaly' && r.status === 'failed').length
+    };
+
+    return { total, success, failed, successRate, mockedCount, anomaliesFlagged, scl, excel };
+  }, [allHistory]);
 
   const exportJsonHref = useMemo(() => {
     const json = exportRunHistoryJson();
@@ -88,6 +163,103 @@ export default function ResultsPage() {
         </>
       }
     >
+      {/* KPI Summary */}
+      <div
+        className="card"
+        style={{
+          background: 'linear-gradient(135deg, rgba(37, 99, 235, 0.08), rgba(245, 158, 11, 0.06))',
+          boxShadow: 'var(--shadow-sm)'
+        }}
+      >
+        <div className="cardBody">
+          <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+            <div>
+              <div className="h1" style={{ fontSize: 14 }}>
+                Run summary
+              </div>
+              <div className="subtle" style={{ marginTop: 4 }}>
+                Aggregates computed from your browser’s persisted run history.
+              </div>
+            </div>
+            <div className="subtle" style={{ textAlign: 'right' }}>
+              {kpiDeltaText(aggregates.mockedCount, aggregates.total)}
+            </div>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))',
+              gap: 10
+            }}
+          >
+            <div className="card" style={{ boxShadow: 'var(--shadow-sm)', background: 'rgba(255,255,255,0.86)' }}>
+              <div className="cardBody">
+                <div className="subtle">Total runs</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+                  {aggregates.total}
+                </div>
+                <div className="subtle" style={{ marginTop: 6 }}>
+                  SCL {aggregates.scl.total} • Excel {aggregates.excel.total}
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ boxShadow: 'var(--shadow-sm)', background: 'rgba(255,255,255,0.86)' }}>
+              <div className="cardBody">
+                <div className="subtle">Success rate</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+                  {formatPct(aggregates.successRate)}
+                </div>
+                <div className="subtle" style={{ marginTop: 6 }}>
+                  {aggregates.success} success • {aggregates.failed} failed
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ boxShadow: 'var(--shadow-sm)', background: 'rgba(255,255,255,0.86)' }}>
+              <div className="cardBody">
+                <div className="subtle">Anomalies flagged</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
+                  {aggregates.anomaliesFlagged}
+                </div>
+                <div className="subtle" style={{ marginTop: 6 }}>
+                  Summed across Excel runs
+                </div>
+              </div>
+            </div>
+
+            <div className="card" style={{ boxShadow: 'var(--shadow-sm)', background: 'rgba(255,255,255,0.86)' }}>
+              <div className="cardBody">
+                <div className="subtle">Run type breakdown</div>
+                <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
+                  <div className="row" style={{ justifyContent: 'space-between' }}>
+                    <span className="pill">SCL</span>
+                    <span className="mono" style={{ fontSize: 12 }}>
+                      {aggregates.scl.success}/{aggregates.scl.total} success
+                    </span>
+                  </div>
+                  <div className="row" style={{ justifyContent: 'space-between' }}>
+                    <span className="pill">Excel</span>
+                    <span className="mono" style={{ fontSize: 12 }}>
+                      {aggregates.excel.success}/{aggregates.excel.total} success
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="subtle" style={{ marginTop: 10 }}>
+            Tip: use the filter below to focus on SCL Validation or Excel Anomaly runs.
+          </div>
+        </div>
+      </div>
+
+      <div style={{ height: 12 }} />
+
       <div className="row">
         <span className="pill">Total runs: {counts.total}</span>
         <span className="pill">SCL: {counts.scl}</span>
