@@ -138,6 +138,18 @@ When `REACT_APP_API_BASE` (or `REACT_APP_BACKEND_URL`) is not set, the API clien
 
 This design keeps the UI stable and demo-friendly while allowing incremental backend integration.
 
+## Illustrative example results (sample outputs)
+
+To help users understand what kinds of outputs they can expect from this tool (without requiring an actual run export), this repository includes an illustrative sample-results document:
+
+- `kavia-docs/CodeWiki/Specs/Other/sample-results.md`
+
+That document provides representative examples for both main workflows:
+
+The IEC 61850 SCL validation workflow is represented as a sample list of Validation Report items with `severity`, `code`, and `message`, matching the frontend’s current rendering expectations for `validationResult.data.details`.
+
+The Excel anomaly detection workflow is represented as a sample anomaly summary (rows, features, outlier rate, score cutoff) plus sample outlier rows including anomaly score and “top contributing features,” mirroring what the Anomaly Detection page displays after running client-side detection.
+
 ## Where to look in the code
 
 If you want to understand or extend the app, these files are good starting points:
