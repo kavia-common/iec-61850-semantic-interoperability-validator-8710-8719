@@ -6,6 +6,7 @@ const navItems = [
   { to: '/ln-tree', title: 'LN Tree', subtitle: 'Browse Logical Nodes', icon: 'L' },
   { to: '/datasets', title: 'Dataset Viewer', subtitle: 'GOOSE/SV datasets', icon: 'D' },
   { to: '/anomaly', title: 'Anomaly Detection', subtitle: 'Excel outliers', icon: 'A' },
+  { to: '/recommendations', title: 'Recommendations', subtitle: 'Actionable cyber fixes', icon: '★' },
   { to: '/report', title: 'Validation Report', subtitle: 'Issues & recommendations', icon: 'R' },
   { to: '/interop-map', title: 'Interoperability Map', subtitle: 'Cross-vendor mapping', icon: 'M' },
   { to: '/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' }

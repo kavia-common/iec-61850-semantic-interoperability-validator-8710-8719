@@ -10,6 +10,7 @@ import LnTreePage from './pages/LnTreePage';
 import DatasetViewerPage from './pages/DatasetViewerPage';
 import AnomalyDetectionPage from './pages/AnomalyDetectionPage';
 import ValidationReportPage from './pages/ValidationReportPage';
+import RecommendationsPage from './pages/RecommendationsPage';
 import InteroperabilityMapPage from './pages/InteroperabilityMapPage';
 import ScadaTablePage from './pages/ScadaTablePage';
 import SettingsPage from './pages/SettingsPage';
@@ -34,6 +35,7 @@ function App() {
                   <Route path="/datasets" element={<DatasetViewerPage />} />
                   <Route path="/anomaly" element={<AnomalyDetectionPage />} />
                   <Route path="/report" element={<ValidationReportPage />} />
+                  <Route path="/recommendations" element={<RecommendationsPage />} />
                   <Route path="/interop-map" element={<InteroperabilityMapPage />} />
                   <Route path="/scada" element={<ScadaTablePage />} />
                   <Route path="/settings" element={<SettingsPage />} />
