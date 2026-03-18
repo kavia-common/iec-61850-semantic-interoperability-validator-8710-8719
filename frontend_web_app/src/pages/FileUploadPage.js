@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import PageShell from '../components/PageShell';
 import { useApp } from '../state/AppContext';
+import { addRunRecord } from '../state/runHistory';
 
 function formatBytes(bytes) {
   if (!Number.isFinite(bytes)) return '—';
@@ -63,6 +64,8 @@ export default function FileUploadPage() {
   async function doValidateWithPolling() {
     if (!file) return;
 
+    const startedAt = new Date().toISOString();
+
     setBusy(true);
     setFlowError(null);
     setPollState({ state: 'starting', progress: 0, message: 'Starting validation…' });
@@ -90,6 +93,25 @@ export default function FileUploadPage() {
         const normalized = normalizeAsValidationResult(startRes);
         setValidationResult(normalized);
         setPollState({ state: 'completed', progress: 100, message: 'Validation completed.' });
+
+        const details = normalized?.data?.details;
+        const summary = normalized?.data?.summary;
+        addRunRecord({
+          type: 'scl_validation',
+          status: normalized?.ok === false ? 'failed' : 'success',
+          startedAt,
+          completedAt: new Date().toISOString(),
+          fileName: file.name,
+          fileSize: file.size,
+          mocked: Boolean(startRes?.mocked || normalized?.mocked),
+          summary: {
+            issues: summary?.issues ?? (Array.isArray(details) ? details.filter((d) => d?.severity === 'error').length : undefined),
+            warnings: summary?.warnings ?? (Array.isArray(details) ? details.filter((d) => d?.severity === 'warning').length : undefined),
+            recommendations: summary?.recommendations ?? undefined
+          },
+          meta: { uploadId }
+        });
+
         return;
       }
 
@@ -106,18 +128,65 @@ export default function FileUploadPage() {
       );
 
       if (!finalRes.ok) {
-        setFlowError(finalRes.error || 'Validation failed.');
-        setPollState({ state: 'failed', progress: undefined, message: finalRes.error || 'Validation failed.' });
+        const errMsg = finalRes.error || 'Validation failed.';
+        setFlowError(errMsg);
+        setPollState({ state: 'failed', progress: undefined, message: errMsg });
+
+        addRunRecord({
+          type: 'scl_validation',
+          status: 'failed',
+          startedAt,
+          completedAt: new Date().toISOString(),
+          fileName: file.name,
+          fileSize: file.size,
+          mocked: Boolean(finalRes?.mocked),
+          summary: { error: errMsg },
+          meta: { uploadId, validationId }
+        });
+
         return;
       }
 
       const normalized = normalizeAsValidationResult(finalRes);
       setValidationResult(normalized);
-      setPollState({ state: 'completed', progress: 100, message: finalRes.mocked ? 'Validation completed (mock fallback).' : 'Validation completed.' });
+
+      const completedMessage = finalRes.mocked ? 'Validation completed (mock fallback).' : 'Validation completed.';
+      setPollState({ state: 'completed', progress: 100, message: completedMessage });
       setLastAction(normalized);
+
+      const details = normalized?.data?.details;
+      const summary = normalized?.data?.summary;
+
+      addRunRecord({
+        type: 'scl_validation',
+        status: 'success',
+        startedAt,
+        completedAt: new Date().toISOString(),
+        fileName: file.name,
+        fileSize: file.size,
+        mocked: Boolean(finalRes?.mocked || normalized?.mocked),
+        summary: {
+          issues: summary?.issues ?? (Array.isArray(details) ? details.filter((d) => d?.severity === 'error').length : undefined),
+          warnings: summary?.warnings ?? (Array.isArray(details) ? details.filter((d) => d?.severity === 'warning').length : undefined),
+          recommendations: summary?.recommendations ?? undefined
+        },
+        meta: { uploadId, validationId }
+      });
     } catch (e) {
-      setFlowError(String(e));
-      setPollState({ state: 'failed', progress: undefined, message: String(e) });
+      const msg = String(e);
+      setFlowError(msg);
+      setPollState({ state: 'failed', progress: undefined, message: msg });
+
+      addRunRecord({
+        type: 'scl_validation',
+        status: 'failed',
+        startedAt,
+        completedAt: new Date().toISOString(),
+        fileName: file?.name,
+        fileSize: file?.size,
+        mocked: false,
+        summary: { error: msg }
+      });
     } finally {
       setBusy(false);
     }

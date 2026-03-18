@@ -9,7 +9,8 @@ const navItems = [
   { to: '/recommendations', title: 'Recommendations', subtitle: 'Actionable cyber fixes', icon: '★' },
   { to: '/report', title: 'Validation Report', subtitle: 'Issues & recommendations', icon: 'R' },
   { to: '/interop-map', title: 'Interoperability Map', subtitle: 'Cross-vendor mapping', icon: 'M' },
-  { to: '/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' }
+  { to: '/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' },
+  { to: '/results', title: 'Results', subtitle: 'Upload/analysis history', icon: '✓' }
 ];
 
 // PUBLIC_INTERFACE

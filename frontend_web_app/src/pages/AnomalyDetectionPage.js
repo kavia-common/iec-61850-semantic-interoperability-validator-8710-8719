@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import PageShell from '../components/PageShell';
 import { detectAnomalies } from '../utils/anomalyDetection';
 import { fetchWorkbookFromPublicAsset, inferNumericColumns, parseWorkbookFileToRows, toNumericMatrix } from '../utils/excel';
+import { addRunRecord } from '../state/runHistory';
 
 function formatPct(x) {
   if (!Number.isFinite(x)) return '—';
@@ -131,6 +132,8 @@ export default function AnomalyDetectionPage() {
   }, [result]);
 
   function runDetection() {
+    const startedAt = new Date().toISOString();
+
     setError(null);
     setBusy(true);
     try {
@@ -144,9 +147,49 @@ export default function AnomalyDetectionPage() {
         threshold
       });
       setResult(res);
+
+      const s = res?.summary;
+      addRunRecord({
+        type: 'excel_anomaly',
+        status: 'success',
+        startedAt,
+        completedAt: new Date().toISOString(),
+        fileName: fileMeta?.name,
+        fileSize: fileMeta?.size ?? undefined,
+        mocked: fileMeta?.source === 'bundled',
+        summary: {
+          rows: s?.rows,
+          features: s?.features,
+          outliers: s?.outliers,
+          outlierRate: s?.outlierRate,
+          method: res?.method,
+          outlierMode,
+          percentile: outlierMode === 'percentile' ? percentile : undefined,
+          topK: outlierMode === 'topK' ? topK : undefined,
+          threshold: outlierMode === 'threshold' ? threshold : undefined
+        },
+        meta: {
+          sheetName: fileMeta?.sheetName,
+          selectedFeatures: selectedColumns.length,
+          missing
+        }
+      });
     } catch (e) {
-      setError(String(e));
+      const msg = String(e);
+      setError(msg);
       setResult(null);
+
+      addRunRecord({
+        type: 'excel_anomaly',
+        status: 'failed',
+        startedAt,
+        completedAt: new Date().toISOString(),
+        fileName: fileMeta?.name,
+        fileSize: fileMeta?.size ?? undefined,
+        mocked: fileMeta?.source === 'bundled',
+        summary: { error: msg },
+        meta: { sheetName: fileMeta?.sheetName }
+      });
     } finally {
       setBusy(false);
     }

@@ -13,6 +13,7 @@ import ValidationReportPage from './pages/ValidationReportPage';
 import RecommendationsPage from './pages/RecommendationsPage';
 import InteroperabilityMapPage from './pages/InteroperabilityMapPage';
 import ScadaTablePage from './pages/ScadaTablePage';
+import ResultsPage from './pages/ResultsPage';
 import SettingsPage from './pages/SettingsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
@@ -38,6 +39,7 @@ function App() {
                   <Route path="/recommendations" element={<RecommendationsPage />} />
                   <Route path="/interop-map" element={<InteroperabilityMapPage />} />
                   <Route path="/scada" element={<ScadaTablePage />} />
+                  <Route path="/results" element={<ResultsPage />} />
                   <Route path="/settings" element={<SettingsPage />} />
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>
