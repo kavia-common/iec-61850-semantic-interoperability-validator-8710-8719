@@ -14,6 +14,8 @@ import RecommendationsPage from './pages/RecommendationsPage';
 import InteroperabilityMapPage from './pages/InteroperabilityMapPage';
 import ScadaTablePage from './pages/ScadaTablePage';
 import SettingsPage from './pages/SettingsPage';
+import BackendResultsPage from './pages/BackendResultsPage';
+import HealthResultsPage from './pages/HealthResultsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
 import WsStatusPage from './pages/ws/WsStatusPage';
@@ -42,6 +44,7 @@ function App() {
                   <Route path="/backend/upload" element={<FileUploadPage />} />
                   <Route path="/backend/ln-tree" element={<LnTreePage />} />
                   <Route path="/backend/datasets" element={<DatasetViewerPage />} />
+                  <Route path="/backend/results" element={<BackendResultsPage />} />
                   <Route path="/backend/settings" element={<SettingsPage />} />
 
                   {/* Health context */}
@@ -50,6 +53,7 @@ function App() {
                   <Route path="/health/report" element={<ValidationReportPage />} />
                   <Route path="/health/interop-map" element={<InteroperabilityMapPage />} />
                   <Route path="/health/scada" element={<ScadaTablePage />} />
+                  <Route path="/health/results" element={<HealthResultsPage />} />
 
                   {/* WS context */}
                   <Route path="/ws/status" element={<WsStatusPage />} />
@@ -67,6 +71,8 @@ function App() {
                   <Route path="/report" element={<Navigate to="/health/report" replace />} />
                   <Route path="/interop-map" element={<Navigate to="/health/interop-map" replace />} />
                   <Route path="/scada" element={<Navigate to="/health/scada" replace />} />
+
+                  <Route path="/results" element={<Navigate to="/backend/results" replace />} />
 
                   <Route path="*" element={<NotFoundPage />} />
                 </Routes>

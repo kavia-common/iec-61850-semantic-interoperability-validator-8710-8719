@@ -33,109 +33,30 @@ function statusStyle(status) {
   return {};
 }
 
-function asNumberMaybe(v) {
-  if (typeof v === 'number' && Number.isFinite(v)) return v;
-  if (typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v))) return Number(v);
-  return null;
-}
-
-function extractAnomaliesFlaggedCount(run) {
-  // Best-effort extraction from persisted summary.
-  // We keep this intentionally defensive because summary shape can evolve.
-  const s = run?.summary;
-  if (!s || typeof s !== 'object') return 0;
-
-  const candidateKeys = [
-    'anomalies',
-    'anomalyCount',
-    'anomaliesFlagged',
-    'flagged',
-    'flaggedCount',
-    'anomalyRows',
-    'outliers',
-    'outlierCount'
-  ];
-
-  for (const k of candidateKeys) {
-    const n = asNumberMaybe(s?.[k]);
-    if (n !== null) return Math.max(0, n);
-  }
-
-  // If summary contains arrays, use their lengths for likely fields.
-  const arrayKeys = ['anomalies', 'outliers', 'flagged', 'rowsFlagged', 'flaggedRows'];
-  for (const k of arrayKeys) {
-    if (Array.isArray(s?.[k])) return s[k].length;
-  }
-
-  return 0;
-}
-
 function formatPct(p) {
   if (!Number.isFinite(p)) return '—';
   return `${(p * 100).toFixed(p >= 0.1 ? 0 : 1)}%`;
 }
 
-function kpiDeltaText(mockedCount, totalCount) {
-  if (!totalCount) return '—';
-  if (!mockedCount) return 'All runs used live processing.';
-  return `${mockedCount}/${totalCount} run(s) used offline/mock fallback.`;
-}
-
-/**
- * NOTE:
- * This legacy combined Results page is intentionally kept for reference/backward compatibility during development,
- * but the app now uses two context-specific Results pages:
- * - /backend/results (BackendResultsPage)
- * - /health/results (HealthResultsPage)
- */
-
 // PUBLIC_INTERFACE
-export default function ResultsPage() {
-  /** Legacy combined Results page: persisted history of SCL + Excel runs with export as CSV/JSON. */
-  const [typeFilter, setTypeFilter] = useState('all');
+export default function BackendResultsPage() {
+  /** Backend Results page: persisted history of backend/SCL validation runs with export as CSV/JSON. */
   const [refreshTick, setRefreshTick] = useState(0);
 
   const allHistory = useMemo(() => listRunHistory({ limit: 1000 }), [refreshTick]);
-
-  const rows = useMemo(() => {
-    if (typeFilter === 'all') return allHistory.slice(0, 200);
-    return allHistory.filter((r) => r.type === typeFilter).slice(0, 200);
-  }, [typeFilter, allHistory]);
-
-  const counts = useMemo(() => {
-    const scl = allHistory.filter((r) => r.type === 'scl_validation').length;
-    const xl = allHistory.filter((r) => r.type === 'excel_anomaly').length;
-    return { total: allHistory.length, scl, xl };
-  }, [allHistory]);
+  const rows = useMemo(() => allHistory.filter((r) => r.type === 'scl_validation').slice(0, 200), [allHistory]);
 
   const aggregates = useMemo(() => {
-    const total = allHistory.length;
-    const success = allHistory.filter((r) => r.status === 'success').length;
-    const failed = allHistory.filter((r) => r.status === 'failed').length;
+    const total = rows.length;
+    const success = rows.filter((r) => r.status === 'success').length;
+    const failed = rows.filter((r) => r.status === 'failed').length;
     const successRate = total ? success / total : NaN;
-
-    const mockedCount = allHistory.filter((r) => r.mocked).length;
-
-    const anomaliesFlagged = allHistory
-      .filter((r) => r.type === 'excel_anomaly')
-      .reduce((acc, r) => acc + extractAnomaliesFlaggedCount(r), 0);
-
-    const scl = {
-      total: allHistory.filter((r) => r.type === 'scl_validation').length,
-      success: allHistory.filter((r) => r.type === 'scl_validation' && r.status === 'success').length,
-      failed: allHistory.filter((r) => r.type === 'scl_validation' && r.status === 'failed').length
-    };
-
-    const excel = {
-      total: allHistory.filter((r) => r.type === 'excel_anomaly').length,
-      success: allHistory.filter((r) => r.type === 'excel_anomaly' && r.status === 'success').length,
-      failed: allHistory.filter((r) => r.type === 'excel_anomaly' && r.status === 'failed').length
-    };
-
-    return { total, success, failed, successRate, mockedCount, anomaliesFlagged, scl, excel };
-  }, [allHistory]);
+    const mockedCount = rows.filter((r) => r.mocked).length;
+    return { total, success, failed, successRate, mockedCount };
+  }, [rows]);
 
   const exportJsonHref = useMemo(() => {
+    // Export remains global because runHistory export helpers are global; users can still export and filter externally.
     const json = exportRunHistoryJson();
     return `data:application/json;charset=utf-8,${encodeURIComponent(json)}`;
   }, [refreshTick]);
@@ -148,7 +69,7 @@ export default function ResultsPage() {
   return (
     <PageShell
       title="Results"
-      subtitle="Persisted history of data upload/analysis runs across modules (SCL validation + Excel anomaly detection)."
+      subtitle="Backend Configuration results: persisted SCL validation run history from this browser."
       actions={
         <>
           <a className="btn" href={exportCsvHref} download="siv-results-summary.csv">
@@ -163,7 +84,7 @@ export default function ResultsPage() {
               clearRunHistory();
               setRefreshTick((x) => x + 1);
             }}
-            disabled={!counts.total}
+            disabled={!allHistory.length}
             title="Clear persisted history from this browser"
           >
             Clear history
@@ -171,7 +92,6 @@ export default function ResultsPage() {
         </>
       }
     >
-      {/* KPI Summary */}
       <div
         className="card"
         style={{
@@ -183,14 +103,16 @@ export default function ResultsPage() {
           <div className="row" style={{ justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
             <div>
               <div className="h1" style={{ fontSize: 14 }}>
-                Run summary
+                Backend run summary
               </div>
               <div className="subtle" style={{ marginTop: 4 }}>
-                Aggregates computed from your browser’s persisted run history.
+                Aggregates computed from your browser’s persisted run history (SCL Validation only).
               </div>
             </div>
             <div className="subtle" style={{ textAlign: 'right' }}>
-              {kpiDeltaText(aggregates.mockedCount, aggregates.total)}
+              {aggregates.mockedCount
+                ? `${aggregates.mockedCount}/${aggregates.total} run(s) used offline/mock fallback.`
+                : 'All runs used live processing.'}
             </div>
           </div>
 
@@ -199,18 +121,15 @@ export default function ResultsPage() {
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: 'repeat(4, minmax(160px, 1fr))',
+              gridTemplateColumns: 'repeat(3, minmax(160px, 1fr))',
               gap: 10
             }}
           >
             <div className="card" style={{ boxShadow: 'var(--shadow-sm)', background: 'rgba(255,255,255,0.86)' }}>
               <div className="cardBody">
-                <div className="subtle">Total runs</div>
+                <div className="subtle">SCL runs</div>
                 <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
                   {aggregates.total}
-                </div>
-                <div className="subtle" style={{ marginTop: 6 }}>
-                  SCL {aggregates.scl.total} • Excel {aggregates.excel.total}
                 </div>
               </div>
             </div>
@@ -229,39 +148,16 @@ export default function ResultsPage() {
 
             <div className="card" style={{ boxShadow: 'var(--shadow-sm)', background: 'rgba(255,255,255,0.86)' }}>
               <div className="cardBody">
-                <div className="subtle">Anomalies flagged</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: 'var(--text)', letterSpacing: '-0.02em' }}>
-                  {aggregates.anomaliesFlagged}
-                </div>
-                <div className="subtle" style={{ marginTop: 6 }}>
-                  Summed across Excel runs
-                </div>
-              </div>
-            </div>
-
-            <div className="card" style={{ boxShadow: 'var(--shadow-sm)', background: 'rgba(255,255,255,0.86)' }}>
-              <div className="cardBody">
-                <div className="subtle">Run type breakdown</div>
-                <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
-                  <div className="row" style={{ justifyContent: 'space-between' }}>
-                    <span className="pill">SCL</span>
-                    <span className="mono" style={{ fontSize: 12 }}>
-                      {aggregates.scl.success}/{aggregates.scl.total} success
-                    </span>
-                  </div>
-                  <div className="row" style={{ justifyContent: 'space-between' }}>
-                    <span className="pill">Excel</span>
-                    <span className="mono" style={{ fontSize: 12 }}>
-                      {aggregates.excel.success}/{aggregates.excel.total} success
-                    </span>
-                  </div>
+                <div className="subtle">Run type</div>
+                <div style={{ marginTop: 6 }}>
+                  <span className="pill">SCL Validation</span>
                 </div>
               </div>
             </div>
           </div>
 
           <div className="subtle" style={{ marginTop: 10 }}>
-            Tip: use the filter below to focus on SCL Validation or Excel Anomaly runs.
+            Tip: this view includes only Backend Configuration (SCL validation) runs.
           </div>
         </div>
       </div>
@@ -269,21 +165,8 @@ export default function ResultsPage() {
       <div style={{ height: 12 }} />
 
       <div className="row">
-        <span className="pill">Total runs: {counts.total}</span>
-        <span className="pill">SCL: {counts.scl}</span>
-        <span className="pill">Excel: {counts.xl}</span>
-
+        <span className="pill">SCL runs: {aggregates.total}</span>
         <span style={{ flex: 1 }} />
-
-        <label className="subtle">
-          Filter:&nbsp;
-          <select value={typeFilter} onChange={(e) => setTypeFilter(e.target.value)}>
-            <option value="all">All</option>
-            <option value="scl_validation">SCL Validation</option>
-            <option value="excel_anomaly">Excel Anomaly</option>
-          </select>
-        </label>
-
         <button className="btn" onClick={() => setRefreshTick((x) => x + 1)} title="Refresh from localStorage">
           Refresh
         </button>
@@ -292,7 +175,7 @@ export default function ResultsPage() {
       <div style={{ height: 12 }} />
 
       {rows.length ? (
-        <table className="table" aria-label="Upload and analysis run history table">
+        <table className="table" aria-label="Backend (SCL validation) run history table">
           <thead>
             <tr>
               <th>When</th>
@@ -346,7 +229,7 @@ export default function ResultsPage() {
         </table>
       ) : (
         <div className="subtle">
-          No runs recorded yet. Run “Validate” in File Upload or “Run detection” in Anomaly Detection to populate history.
+          No backend runs recorded yet. Run “Validate” in File Upload to populate history.
         </div>
       )}
 

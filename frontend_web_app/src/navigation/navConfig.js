@@ -17,6 +17,7 @@ export const CONTEXT_MODULES = {
     { to: '/backend/upload', title: 'File Upload', subtitle: 'Ingest SCL files', icon: 'U' },
     { to: '/backend/ln-tree', title: 'LN Tree', subtitle: 'Browse Logical Nodes', icon: 'L' },
     { to: '/backend/datasets', title: 'Dataset Viewer', subtitle: 'GOOSE/SV datasets', icon: 'D' },
+    { to: '/backend/results', title: 'Results', subtitle: 'Backend run history', icon: '✓' },
     { to: '/backend/settings', title: 'Settings', subtitle: 'Environment & flags', icon: '⚙' }
   ],
   health: [
@@ -24,7 +25,8 @@ export const CONTEXT_MODULES = {
     { to: '/health/recommendations', title: 'Recommendations', subtitle: 'Actionable fixes', icon: '★' },
     { to: '/health/report', title: 'Validation Report', subtitle: 'Issues & recommendations', icon: 'R' },
     { to: '/health/interop-map', title: 'Interoperability Map', subtitle: 'Cross-vendor mapping', icon: 'M' },
-    { to: '/health/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' }
+    { to: '/health/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' },
+    { to: '/health/results', title: 'Results', subtitle: 'Health run history', icon: '✓' }
   ],
   ws: [
     { to: '/ws/status', title: 'WS Connection Status', subtitle: 'Live connection state', icon: '⇄' },
