@@ -9,9 +9,11 @@ export default function TopNav() {
         <div className="brandMark" aria-hidden="true">
           SIV
         </div>
-        <div className="brandTitle">
+
+        {/* Brand label: keep “Modules” inline with the tool name (same row), per UI clarification. */}
+        <div className="brandTitle brandTitleInline">
           <strong>IEC 61850 SIV-Tool</strong>
-          <span>Semantic Interoperability Validator</span>
+          <span className="brandInlineTag">Modules</span>
         </div>
       </div>
 

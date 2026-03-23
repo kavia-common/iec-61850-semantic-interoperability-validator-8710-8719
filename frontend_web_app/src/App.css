@@ -59,6 +59,23 @@
   color: var(--muted);
 }
 
+/* Brand title variant: puts “Modules” inline with the tool name (same row). */
+.brandTitleInline {
+  flex-direction: row;
+  align-items: baseline;
+  gap: 10px;
+}
+
+.brandInlineTag {
+  font-size: 11px;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.9);
+  padding: 3px 8px;
+  border-radius: 999px;
+  line-height: 1.2;
+}
+
 .topActions {
   display: flex;
   align-items: center;
