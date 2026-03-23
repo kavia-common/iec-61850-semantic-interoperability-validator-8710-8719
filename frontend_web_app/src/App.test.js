@@ -51,15 +51,20 @@ beforeEach(() => {
 });
 
 describe('App shell + routing', () => {
-  test('renders top brand and module navigation', async () => {
+  test('renders top brand and module navigation (context-aware)', async () => {
+    // Default route redirects to /backend/upload, so the sidebar should show backend modules.
     render(<App />);
 
     expect(screen.getByLabelText(/application brand/i)).toBeInTheDocument();
     expect(screen.getByText(/IEC 61850 SIV-Tool/i)).toBeInTheDocument();
 
     const nav = screen.getByLabelText(/module navigation/i);
-    expect(within(nav).getByRole('link', { name: /File Upload/i })).toBeInTheDocument();
-    expect(within(nav).getByRole('link', { name: /Validation Report/i })).toBeInTheDocument();
+
+    // In backend context, File Upload is present...
+    expect(within(nav).getByRole('link', { name: /File Upload/i })).toHaveAttribute('href', '/backend/upload');
+
+    // ...but Validation Report is in the Health context, so it should NOT appear here.
+    expect(within(nav).queryByText(/Validation Report/i)).not.toBeInTheDocument();
 
     // TopNav triggers ws.connect() on mount and also calls api.getHealth()
     await waitFor(() => expect(createWsClient).toHaveBeenCalledTimes(1));
@@ -166,20 +171,24 @@ describe('File Upload flow (mocked API)', () => {
 describe('Validation Report rendering states', () => {
   test('when no validation result, shows informational placeholder item', async () => {
     const user = userEvent.setup();
-    window.history.pushState({}, '', '/report');
+    // Validation Report lives in the Health context namespace.
+    window.history.pushState({}, '', '/health/report');
     render(<App />);
 
     expect(await screen.findByLabelText('Validation Report')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Run validation from File Upload to see issues/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Run validation from File Upload to see issues/i)).toBeInTheDocument();
 
     // Ensure download link is not present when no validationResult exists
     expect(screen.queryByRole('link', { name: /download json/i })).not.toBeInTheDocument();
 
-    // Navigate away and back just to ensure route is stable
+    // Navigate to backend File Upload via a known backend route link.
+    // (Health sidebar doesn't include File Upload; it is under Backend Configuration context.)
     const nav = screen.getByLabelText(/module navigation/i);
-    await user.click(within(nav).getByRole('link', { name: /File Upload/i }));
+    await user.click(within(nav).getByRole('link', { name: /Anomaly Detection/i })); // prove we can navigate within context
+    expect(await screen.findByLabelText('Anomaly Detection')).toBeInTheDocument();
+
+    window.history.pushState({}, '', '/backend/upload');
+    // Re-render not required; router listens to history changes, but wait for page to appear.
     expect(await screen.findByLabelText('File Upload')).toBeInTheDocument();
   });
 
@@ -201,7 +210,8 @@ describe('Validation Report rendering states', () => {
     });
     createApiClient.mockReturnValue(api);
 
-    window.history.pushState({}, '', '/upload');
+    // Start from backend upload (new namespace; old /upload redirects but we can go direct)
+    window.history.pushState({}, '', '/backend/upload');
     render(<App />);
 
     const fileInput = screen.getByLabelText(/select scl file/i);
@@ -211,9 +221,14 @@ describe('Validation Report rendering states', () => {
     await user.click(screen.getByRole('button', { name: /validate/i }));
     await waitFor(() => expect(api.request).toHaveBeenCalledTimes(1));
 
-    // Now navigate to report and assert details are rendered
-    const nav = screen.getByLabelText(/module navigation/i);
-    await user.click(within(nav).getByRole('link', { name: /validation report/i }));
+    // Switch to Health context via top tabs, then select Validation Report from the Health sidebar.
+    const topNav = screen.getByLabelText(/top navigation/i);
+    await user.click(within(topNav).getByRole('link', { name: /Health/i }));
+
+    const moduleNav = screen.getByLabelText(/module navigation/i);
+    const reportLink = within(moduleNav).getByRole('link', { name: /Validation Report/i });
+    expect(reportLink).toHaveAttribute('href', '/health/report');
+    await user.click(reportLink);
 
     expect(await screen.findByLabelText('Validation Report')).toBeInTheDocument();
     expect(screen.getByText('LN-001')).toBeInTheDocument();
