@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
+import { MemoryRouter } from 'react-router-dom';
 import App from './App';
 
 // Mock service factories used by AppProvider (AppContext.js).
@@ -12,6 +13,36 @@ jest.mock('./services/apiClient', () => ({
 jest.mock('./services/wsClient', () => ({
   createWsClient: jest.fn()
 }));
+
+/**
+ * App uses <BrowserRouter>. For deterministic route tests, we replace BrowserRouter with MemoryRouter
+ * and control the starting location using an injected `window.__TEST_INITIAL_ENTRIES__`.
+ */
+jest.mock('react-router-dom', () => {
+  const actual = jest.requireActual('react-router-dom');
+  return {
+    ...actual,
+    BrowserRouter: ({ children }) => (
+      <actual.MemoryRouter initialEntries={window.__TEST_INITIAL_ENTRIES__ || ['/']}>
+        {children}
+      </actual.MemoryRouter>
+    )
+  };
+});
+
+// AnomalyDetectionPage auto-loads a bundled Excel via fetch() on mount.
+// Mock that helper to prevent jsdom network errors (ECONNREFUSED) when tests land in health/anomaly.
+jest.mock('./utils/excel', () => {
+  const actual = jest.requireActual('./utils/excel');
+  return {
+    ...actual,
+    fetchWorkbookFromPublicAsset: jest.fn().mockResolvedValue({
+      sheetNames: ['Sheet1'],
+      sheetName: 'Sheet1',
+      rows: []
+    })
+  };
+});
 
 const { createApiClient } = require('./services/apiClient');
 const { createWsClient } = require('./services/wsClient');
@@ -42,8 +73,14 @@ function makeWsMock(overrides = {}) {
   };
 }
 
+function renderAt(route) {
+  window.__TEST_INITIAL_ENTRIES__ = [route];
+  return render(<App />);
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
+  window.__TEST_INITIAL_ENTRIES__ = ['/'];
 
   // Default mocks for most tests
   createApiClient.mockReturnValue(makeApiMock());
@@ -51,9 +88,9 @@ beforeEach(() => {
 });
 
 describe('App shell + routing', () => {
-  test('renders top brand and module navigation (context-aware)', async () => {
+  test('renders top brand and module navigation (context-aware) and does not auto-connect ws', async () => {
     // Default route redirects to /backend/upload, so the sidebar should show backend modules.
-    render(<App />);
+    renderAt('/');
 
     expect(screen.getByLabelText(/application brand/i)).toBeInTheDocument();
     expect(screen.getByText(/IEC 61850 SIV-Tool/i)).toBeInTheDocument();
@@ -61,37 +98,38 @@ describe('App shell + routing', () => {
     const nav = screen.getByLabelText(/module navigation/i);
 
     // In backend context, File Upload is present...
-    expect(within(nav).getByRole('link', { name: /File Upload/i })).toHaveAttribute('href', '/backend/upload');
+    expect(within(nav).getByRole('link', { name: /File Upload/i })).toHaveAttribute(
+      'href',
+      '/backend/upload'
+    );
 
     // ...but Validation Report is in the Health context, so it should NOT appear here.
     expect(within(nav).queryByText(/Validation Report/i)).not.toBeInTheDocument();
 
-    // TopNav triggers ws.connect() on mount and also calls api.getHealth()
+    // Services are created once by AppProvider.
     await waitFor(() => expect(createWsClient).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(createApiClient).toHaveBeenCalledTimes(1));
 
+    // Current behavior: NO websocket auto-connect on mount.
     const ws = createWsClient.mock.results[0].value;
-    const api = createApiClient.mock.results[0].value;
+    expect(ws.connect).toHaveBeenCalledTimes(0);
 
-    expect(ws.connect).toHaveBeenCalledTimes(1);
-    await waitFor(() => expect(api.getHealth).toHaveBeenCalledTimes(1));
+    // App shell does not require an immediate healthcheck call on mount.
+    const api = createApiClient.mock.results[0].value;
+    expect(api.getHealth).toHaveBeenCalledTimes(0);
   });
 
   test('default route (/) redirects to File Upload', async () => {
-    window.history.pushState({}, '', '/');
-    render(<App />);
+    renderAt('/');
 
     // FileUploadPage renders a PageShell labeled by its title
     expect(await screen.findByLabelText('File Upload')).toBeInTheDocument();
-    expect(
-      screen.getByText(/Upload IEC 61850 SCL files/i)
-    ).toBeInTheDocument();
+    expect(screen.getByText(/Upload IEC 61850 SCL files/i)).toBeInTheDocument();
   });
 
   test('sidebar navigation changes route to Settings', async () => {
     const user = userEvent.setup();
-    window.history.pushState({}, '', '/upload');
-    render(<App />);
+    renderAt('/backend/upload');
 
     const nav = screen.getByLabelText(/module navigation/i);
     await user.click(within(nav).getByRole('link', { name: /Settings/i }));
@@ -102,12 +140,11 @@ describe('App shell + routing', () => {
 
   test('unknown route renders NotFound page', async () => {
     const user = userEvent.setup();
-    window.history.pushState({}, '', '/does-not-exist');
-    render(<App />);
+    renderAt('/does-not-exist');
 
     expect(await screen.findByLabelText('Page not found')).toBeInTheDocument();
 
-    // CTA should route back to /upload
+    // CTA should route back to backend upload (new canonical route)
     await user.click(screen.getByRole('link', { name: /Go to File Upload/i }));
     expect(await screen.findByLabelText('File Upload')).toBeInTheDocument();
   });
@@ -137,8 +174,7 @@ describe('File Upload flow (mocked API)', () => {
     });
     createApiClient.mockReturnValue(api);
 
-    window.history.pushState({}, '', '/upload');
-    render(<App />);
+    renderAt('/backend/upload');
 
     // Initially disabled because no file selected
     const uploadBtn = screen.getByRole('button', { name: /upload/i });
@@ -171,9 +207,9 @@ describe('File Upload flow (mocked API)', () => {
 describe('Validation Report rendering states', () => {
   test('when no validation result, shows informational placeholder item', async () => {
     const user = userEvent.setup();
+
     // Validation Report lives in the Health context namespace.
-    window.history.pushState({}, '', '/health/report');
-    render(<App />);
+    renderAt('/health/report');
 
     expect(await screen.findByLabelText('Validation Report')).toBeInTheDocument();
     expect(screen.getByText(/Run validation from File Upload to see issues/i)).toBeInTheDocument();
@@ -181,14 +217,17 @@ describe('Validation Report rendering states', () => {
     // Ensure download link is not present when no validationResult exists
     expect(screen.queryByRole('link', { name: /download json/i })).not.toBeInTheDocument();
 
-    // Navigate to backend File Upload via a known backend route link.
-    // (Health sidebar doesn't include File Upload; it is under Backend Configuration context.)
+    // Navigate within Health context without triggering real network calls
     const nav = screen.getByLabelText(/module navigation/i);
-    await user.click(within(nav).getByRole('link', { name: /Anomaly Detection/i })); // prove we can navigate within context
+    await user.click(within(nav).getByRole('link', { name: /Anomaly Detection/i }));
     expect(await screen.findByLabelText('Anomaly Detection')).toBeInTheDocument();
 
-    window.history.pushState({}, '', '/backend/upload');
-    // Re-render not required; router listens to history changes, but wait for page to appear.
+    // Switch context using the top tabs, then click File Upload in backend context.
+    const topNav = screen.getByLabelText(/top navigation/i);
+    await user.click(within(topNav).getByRole('link', { name: /Backend Configuration/i }));
+
+    const backendNav = screen.getByLabelText(/module navigation/i);
+    await user.click(within(backendNav).getByRole('link', { name: /File Upload/i }));
     expect(await screen.findByLabelText('File Upload')).toBeInTheDocument();
   });
 
@@ -210,9 +249,8 @@ describe('Validation Report rendering states', () => {
     });
     createApiClient.mockReturnValue(api);
 
-    // Start from backend upload (new namespace; old /upload redirects but we can go direct)
-    window.history.pushState({}, '', '/backend/upload');
-    render(<App />);
+    // Start from backend upload (new namespace)
+    renderAt('/backend/upload');
 
     const fileInput = screen.getByLabelText(/select scl file/i);
     const file = new File(['dummy'], 'sample.icd', { type: 'text/xml' });
@@ -258,8 +296,7 @@ describe('Settings env/config display', () => {
       createApiClient.mockReturnValue(api);
       createWsClient.mockReturnValue(ws);
 
-      window.history.pushState({}, '', '/settings');
-      render(<App />);
+      renderAt('/backend/settings');
 
       const settingsPage = await screen.findByLabelText('Settings');
       const settings = within(settingsPage);
@@ -282,5 +319,15 @@ describe('Settings env/config display', () => {
     } finally {
       process.env = oldEnv;
     }
+  });
+
+  test('can render via MemoryRouter (sanity)', async () => {
+    // This is a small sanity check ensuring MemoryRouter itself works in this test file.
+    render(
+      <MemoryRouter initialEntries={['/backend/upload']}>
+        <App />
+      </MemoryRouter>
+    );
+    expect(await screen.findByLabelText('File Upload')).toBeInTheDocument();
   });
 });
