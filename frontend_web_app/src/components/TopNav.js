@@ -1,22 +1,21 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
-
-const moduleTabs = [
-  { to: '/upload', label: 'File Upload' },
-  { to: '/results', label: 'Results' }, // Keep Results after File Upload (routing already unchanged)
-  { to: '/ln-tree', label: 'LN Tree' },
-  { to: '/datasets', label: 'Dataset Viewer' },
-  { to: '/report', label: 'Validation Report' },
-  { to: '/interop-map', label: 'Interoperability Map' },
-  { to: '/scada', label: 'SCADA Table' },
-  { to: '/anomaly', label: 'Anomaly Detection' },
-  { to: '/recommendations', label: 'Recommendations' },
-  { to: '/settings', label: 'Settings' }
-];
+import React, { useMemo } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { TOP_TABS, getContextFromPathname, getDefaultModulePathForContext } from '../navigation/navConfig';
 
 // PUBLIC_INTERFACE
 export default function TopNav() {
-  /** Top navigation bar: brand + module tabs + primary actions. (Status pills intentionally removed.) */
+  /** Top navigation bar: brand + top-level context tabs (Backend Configuration / Health / WS). */
+  const location = useLocation();
+  const activeContext = useMemo(() => getContextFromPathname(location.pathname), [location.pathname]);
+
+  const tabs = useMemo(() => {
+    // Each top tab links to the default module page for that context.
+    return TOP_TABS.map((t) => ({
+      ...t,
+      to: getDefaultModulePathForContext(t.key)
+    }));
+  }, []);
+
   return (
     <div className="topNav" role="banner">
       <div className="brand" aria-label="Application brand">
@@ -27,13 +26,12 @@ export default function TopNav() {
         <div className="brandTitle brandTitleInline">
           <strong>IEC 61850 SIV-Tool</strong>
 
-          {/* Horizontal module navigation (tabs). Scrolls horizontally on smaller screens. */}
-          <nav className="topTabs" aria-label="Module navigation">
-            {moduleTabs.map((t) => (
+          <nav className="topTabs" aria-label="Top navigation">
+            {tabs.map((t) => (
               <NavLink
-                key={t.to}
+                key={t.key}
                 to={t.to}
-                className={({ isActive }) => `topTab${isActive ? ' topTabActive' : ''}`}
+                className={() => `topTab${activeContext === t.key ? ' topTabActive' : ''}`}
               >
                 {t.label}
               </NavLink>

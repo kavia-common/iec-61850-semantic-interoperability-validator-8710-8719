@@ -1,32 +1,38 @@
-import React from 'react';
-import { NavLink } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
+import { CONTEXT_MODULES, getContextFromPathname } from '../navigation/navConfig';
 
-const navItems = [
-  { to: '/upload', title: 'File Upload', subtitle: 'Ingest SCL files', icon: 'U' },
-  { to: '/results', title: 'Results', subtitle: 'Upload/analysis history', icon: '✓' },
-  { to: '/ln-tree', title: 'LN Tree', subtitle: 'Browse Logical Nodes', icon: 'L' },
-  { to: '/datasets', title: 'Dataset Viewer', subtitle: 'GOOSE/SV datasets', icon: 'D' },
-  { to: '/anomaly', title: 'Anomaly Detection', subtitle: 'Excel outliers', icon: 'A' },
-  { to: '/recommendations', title: 'Recommendations', subtitle: 'Actionable cyber fixes', icon: '★' },
-  { to: '/report', title: 'Validation Report', subtitle: 'Issues & recommendations', icon: 'R' },
-  { to: '/interop-map', title: 'Interoperability Map', subtitle: 'Cross-vendor mapping', icon: 'M' },
-  { to: '/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' }
-];
+/**
+ * Context-aware sidebar:
+ * - Items are derived strictly from the active top tab context.
+ * - No global modules are shown.
+ */
 
 // PUBLIC_INTERFACE
 export default function Sidebar() {
-  /** Sidebar module navigation. */
+  /** Left-side module menu that changes strictly based on active top tab context. */
+  const location = useLocation();
+  const contextKey = useMemo(() => getContextFromPathname(location.pathname), [location.pathname]);
+  const modules = CONTEXT_MODULES[contextKey] || [];
+
+  // Simple opacity transition on context changes to satisfy "smooth transition".
+  const [fadeIn, setFadeIn] = useState(true);
+  useEffect(() => {
+    setFadeIn(false);
+    const t = window.setTimeout(() => setFadeIn(true), 70);
+    return () => window.clearTimeout(t);
+  }, [contextKey]);
+
   return (
     <aside className="sidebar" aria-label="Module navigation">
-      <div className="navSectionTitle">Modules</div>
-      <ul className="navList">
-        {navItems.map((it) => (
+      <div className="navSectionTitle">{contextKey === 'backend' ? 'Backend Configuration' : contextKey === 'health' ? 'Health' : 'WS'}</div>
+
+      <ul className={`navList sidebarFade${fadeIn ? ' sidebarFadeIn' : ''}`}>
+        {modules.map((it) => (
           <li key={it.to}>
             <NavLink
               to={it.to}
-              className={({ isActive }) =>
-                `navItemLink${isActive ? ' navItemLinkActive' : ''}`
-              }
+              className={({ isActive }) => `navItemLink${isActive ? ' navItemLinkActive' : ''}`}
             >
               <span className="navIcon" aria-hidden="true">
                 {it.icon}
@@ -38,28 +44,6 @@ export default function Sidebar() {
             </NavLink>
           </li>
         ))}
-      </ul>
-
-      <div className="navSectionTitle" style={{ marginTop: 14 }}>
-        Utilities
-      </div>
-      <ul className="navList">
-        <li>
-          <NavLink
-            to="/settings"
-            className={({ isActive }) =>
-              `navItemLink${isActive ? ' navItemLinkActive' : ''}`
-            }
-          >
-            <span className="navIcon" aria-hidden="true">
-              ⚙
-            </span>
-            <span className="navText">
-              <strong>Settings</strong>
-              <span>Environment & flags</span>
-            </span>
-          </NavLink>
-        </li>
       </ul>
     </aside>
   );

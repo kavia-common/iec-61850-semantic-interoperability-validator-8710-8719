@@ -16,6 +16,16 @@ export function createWsClient() {
   let socket = null;
   let status = 'idle'; // idle|connecting|open|closed|error
 
+  // Lightweight in-memory log buffer (ring).
+  const logBuffer = [];
+  const LOG_LIMIT = 250;
+
+  function pushLog(entry) {
+    logBuffer.push(entry);
+    while (logBuffer.length > LOG_LIMIT) logBuffer.shift();
+    emit('log', entry);
+  }
+
   function emit(eventName, payload) {
     const fns = listeners.get(eventName);
     if (!fns) return;
@@ -28,10 +38,16 @@ export function createWsClient() {
     return () => listeners.get(eventName)?.delete(fn);
   }
 
+  function setStatus(nextStatus, extra) {
+    status = nextStatus;
+    const evt = { status, ...extra };
+    emit('status', evt);
+    pushLog({ ts: new Date().toISOString(), level: 'info', type: 'status', data: evt });
+  }
+
   function connect() {
     if (!wsUrl) {
-      status = 'closed';
-      emit('status', { status, message: 'WS URL not configured; running in offline mode.' });
+      setStatus('closed', { message: 'WS URL not configured; running in offline mode.' });
       return;
     }
 
@@ -39,15 +55,13 @@ export function createWsClient() {
       return;
     }
 
-    status = 'connecting';
-    emit('status', { status });
+    setStatus('connecting');
 
     try {
       socket = new WebSocket(wsUrl);
 
       socket.onopen = () => {
-        status = 'open';
-        emit('status', { status });
+        setStatus('open');
       };
 
       socket.onmessage = (evt) => {
@@ -55,41 +69,48 @@ export function createWsClient() {
         try {
           const parsed = JSON.parse(evt.data);
           emit('message', parsed);
+          pushLog({ ts: new Date().toISOString(), level: 'info', type: 'message', data: parsed });
         } catch (_e) {
-          emit('message', { type: 'text', data: evt.data });
+          const payload = { type: 'text', data: evt.data };
+          emit('message', payload);
+          pushLog({ ts: new Date().toISOString(), level: 'info', type: 'message', data: payload });
         }
       };
 
       socket.onerror = () => {
-        status = 'error';
-        emit('status', { status, message: 'WebSocket error' });
+        setStatus('error', { message: 'WebSocket error' });
+        pushLog({ ts: new Date().toISOString(), level: 'error', type: 'error', data: { message: 'WebSocket error' } });
       };
 
-      socket.onclose = () => {
-        status = 'closed';
-        emit('status', { status });
+      socket.onclose = (e) => {
+        setStatus('closed', { code: e?.code, reason: e?.reason });
       };
     } catch (e) {
-      status = 'error';
-      emit('status', { status, message: String(e) });
+      setStatus('error', { message: String(e) });
+      pushLog({ ts: new Date().toISOString(), level: 'error', type: 'exception', data: { message: String(e) } });
     }
   }
 
   function send(payload) {
-    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
-    socket.send(typeof payload === 'string' ? payload : JSON.stringify(payload));
+    if (!socket || socket.readyState !== WebSocket.OPEN) {
+      pushLog({ ts: new Date().toISOString(), level: 'warn', type: 'send', data: { ok: false, reason: 'socket-not-open' } });
+      return false;
+    }
+    const wire = typeof payload === 'string' ? payload : JSON.stringify(payload);
+    socket.send(wire);
+    pushLog({ ts: new Date().toISOString(), level: 'info', type: 'send', data: { ok: true, bytes: wire.length } });
     return true;
   }
 
   function close() {
     try {
       socket?.close();
+      pushLog({ ts: new Date().toISOString(), level: 'info', type: 'close', data: { requested: true } });
     } catch (_e) {
       // ignore
     } finally {
       socket = null;
-      status = 'closed';
-      emit('status', { status });
+      setStatus('closed');
     }
   }
 
@@ -98,6 +119,11 @@ export function createWsClient() {
     connect,
     send,
     close,
-    getStatus: () => status
+    getStatus: () => status,
+    getLogs: () => [...logBuffer],
+    clearLogs: () => {
+      logBuffer.splice(0, logBuffer.length);
+      pushLog({ ts: new Date().toISOString(), level: 'info', type: 'log', data: { message: 'Logs cleared' } });
+    }
   };
 }
