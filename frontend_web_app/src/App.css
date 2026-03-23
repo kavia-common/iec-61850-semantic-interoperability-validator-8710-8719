@@ -20,6 +20,7 @@
   background: rgba(255, 255, 255, 0.72);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
+  overflow: hidden; /* ensures tab scroller doesn't affect sticky header bounds */
 }
 
 .brand {
@@ -59,21 +60,57 @@
   color: var(--muted);
 }
 
-/* Brand title variant: puts “Modules” inline with the tool name (same row). */
+/* Brand title variant: puts module navigation inline with the tool name (same row). */
 .brandTitleInline {
   flex-direction: row;
-  align-items: baseline;
-  gap: 10px;
+  align-items: center;
+  gap: 12px;
+  min-width: 0; /* allow nested tab scroller to shrink */
 }
 
-.brandInlineTag {
-  font-size: 11px;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.9);
-  padding: 3px 8px;
+/* Top tabs (horizontal module navigation) */
+.topTabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 4px;
+  min-width: 0;
+
+  /* Responsive overflow behavior */
+  overflow-x: auto;
+  overflow-y: hidden;
+  white-space: nowrap;
+
+  /* Make scrolling feel deliberate and avoid affecting layout */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.topTab {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 10px;
   border-radius: 999px;
-  line-height: 1.2;
+  text-decoration: none;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  flex: 0 0 auto;
+}
+
+.topTab:hover {
+  background: rgba(37, 99, 235, 0.08);
+  border-color: rgba(37, 99, 235, 0.16);
+  color: var(--text);
+}
+
+.topTabActive {
+  background: rgba(37, 99, 235, 0.12);
+  border-color: rgba(37, 99, 235, 0.28);
+  color: var(--text);
 }
 
 .topActions {
@@ -83,21 +120,13 @@
   margin-left: auto;
 }
 
-.contentGrid {
-  display: grid;
-  grid-template-columns: 280px 1fr;
-  min-height: calc(100vh - 56px);
-}
-
-.sidebar {
-  padding: 14px 12px 16px 12px;
-  border-right: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(10px);
-}
-
+/* Sidebar layout has been removed; main content now spans full width. */
 .main {
   padding: 18px;
+}
+
+.mainFullWidth {
+  width: 100%;
 }
 
 /* Cards */
@@ -312,15 +341,6 @@
 }
 
 @media (max-width: 980px) {
-  .contentGrid {
-    grid-template-columns: 1fr;
-  }
-
-  .sidebar {
-    border-right: none;
-    border-bottom: 1px solid var(--border);
-  }
-
   .brand {
     min-width: unset;
   }

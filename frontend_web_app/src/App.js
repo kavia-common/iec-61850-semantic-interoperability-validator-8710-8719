@@ -2,7 +2,6 @@ import React from 'react';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import './App.css';
 import TopNav from './components/TopNav';
-import Sidebar from './components/Sidebar';
 import { AppProvider } from './state/AppContext';
 
 import FileUploadPage from './pages/FileUploadPage';
@@ -26,25 +25,22 @@ function App() {
         <div className="App">
           <div className="shell">
             <TopNav />
-            <div className="contentGrid">
-              <Sidebar />
-              <main className="main" role="main">
-                <Routes>
-                  <Route path="/" element={<Navigate to="/upload" replace />} />
-                  <Route path="/upload" element={<FileUploadPage />} />
-                  <Route path="/ln-tree" element={<LnTreePage />} />
-                  <Route path="/datasets" element={<DatasetViewerPage />} />
-                  <Route path="/anomaly" element={<AnomalyDetectionPage />} />
-                  <Route path="/report" element={<ValidationReportPage />} />
-                  <Route path="/recommendations" element={<RecommendationsPage />} />
-                  <Route path="/interop-map" element={<InteroperabilityMapPage />} />
-                  <Route path="/scada" element={<ScadaTablePage />} />
-                  <Route path="/results" element={<ResultsPage />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="*" element={<NotFoundPage />} />
-                </Routes>
-              </main>
-            </div>
+            <main className="main mainFullWidth" role="main">
+              <Routes>
+                <Route path="/" element={<Navigate to="/upload" replace />} />
+                <Route path="/upload" element={<FileUploadPage />} />
+                <Route path="/ln-tree" element={<LnTreePage />} />
+                <Route path="/datasets" element={<DatasetViewerPage />} />
+                <Route path="/anomaly" element={<AnomalyDetectionPage />} />
+                <Route path="/report" element={<ValidationReportPage />} />
+                <Route path="/recommendations" element={<RecommendationsPage />} />
+                <Route path="/interop-map" element={<InteroperabilityMapPage />} />
+                <Route path="/scada" element={<ScadaTablePage />} />
+                <Route path="/results" element={<ResultsPage />} />
+                <Route path="/settings" element={<SettingsPage />} />
+                <Route path="*" element={<NotFoundPage />} />
+              </Routes>
+            </main>
           </div>
         </div>
       </BrowserRouter>
