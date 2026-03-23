@@ -16,14 +16,14 @@ jest.mock('./services/wsClient', () => ({
 
 /**
  * App uses <BrowserRouter>. For deterministic route tests, we replace BrowserRouter with MemoryRouter
- * and control the starting location using an injected `window.__TEST_INITIAL_ENTRIES__`.
+ * and control the starting location using an injected `globalThis.__TEST_INITIAL_ENTRIES__`.
  */
 jest.mock('react-router-dom', () => {
   const actual = jest.requireActual('react-router-dom');
   return {
     ...actual,
     BrowserRouter: ({ children }) => (
-      <actual.MemoryRouter initialEntries={window.__TEST_INITIAL_ENTRIES__ || ['/']}>
+      <actual.MemoryRouter initialEntries={globalThis.__TEST_INITIAL_ENTRIES__ || ['/']}>
         {children}
       </actual.MemoryRouter>
     )
@@ -74,13 +74,13 @@ function makeWsMock(overrides = {}) {
 }
 
 function renderAt(route) {
-  window.__TEST_INITIAL_ENTRIES__ = [route];
+  globalThis.__TEST_INITIAL_ENTRIES__ = [route];
   return render(<App />);
 }
 
 beforeEach(() => {
   jest.clearAllMocks();
-  window.__TEST_INITIAL_ENTRIES__ = ['/'];
+  globalThis.__TEST_INITIAL_ENTRIES__ = ['/'];
 
   // Default mocks for most tests
   createApiClient.mockReturnValue(makeApiMock());
@@ -322,12 +322,7 @@ describe('Settings env/config display', () => {
   });
 
   test('can render via MemoryRouter (sanity)', async () => {
-    // This is a small sanity check ensuring MemoryRouter itself works in this test file.
-    render(
-      <MemoryRouter initialEntries={['/backend/upload']}>
-        <App />
-      </MemoryRouter>
-    );
+    renderAt('/backend/upload');
     expect(await screen.findByLabelText('File Upload')).toBeInTheDocument();
   });
 });

@@ -10,15 +10,13 @@ The UI is designed to remain usable even when a backend API is not configured by
 
 ## What the app does (at a glance)
 
-The app provides a top navigation bar and a sidebar of modules. A typical workflow is:
+The app uses a top-tab navigation model with a context-aware left module menu. A typical workflow is:
 
-1. Upload an SCL file and run validation.
-2. Review the Validation Report (issues, warnings, and recommended fixes).
-3. Explore the model using the Logical Node (LN) Tree.
-4. Review cross-vendor alignment in the Interoperability Map.
-5. Inspect and adjust SCADA point mappings in the SCADA Table.
-6. Optionally run Excel anomaly detection (a standalone, client-side module).
-7. Use Settings to confirm environment wiring (API base URL, WebSocket URL, and feature flags).
+1. Use the Backend Configuration tab to upload an SCL file and run validation.
+2. Use the Health tab to review outputs such as Validation Report, Interoperability Map, SCADA Table, and Recommendations.
+3. Review run history under Results, which is split into Backend Results and Health Results depending on the active tab.
+4. Use the WS tab to inspect and manage WebSocket connectivity (status, reconnect controls, and logs).
+5. Use Settings (under Backend Configuration) to confirm environment wiring such as API base URL and feature flags.
 
 ## How it was created (high-level tech stack and architecture)
 
@@ -27,7 +25,7 @@ This container (`frontend_web_app/`) is a React single-page application built wi
 At a high level, the codebase is organized around pages (modules) plus a small set of shared services:
 
 - The UI is written in React and composed of pages and shared layout components.
-- Navigation is handled by `react-router-dom` with routes for each module.
+- Navigation is handled by `react-router-dom` with namespaced routes grouped by top-level context (tabs).
 - A lightweight state container (`AppContext`) provides:
   - An API client (`createApiClient`) for HTTP calls when a backend is configured.
   - A WebSocket client (`createWsClient`) for connection status and future real-time updates.
@@ -47,33 +45,77 @@ The app centralizes environment variable access in `src/config/env.js`. The most
 
 ### High-level component architecture
 
-The main composition is:
+The main navigation and layout composition is implemented by:
 
-- `src/App.js`: Route table and overall layout.
-- `src/components/TopNav.js`: Branding plus backend/health and WebSocket status indicators.
-- `src/components/Sidebar.js`: Module navigation.
-- `src/components/PageShell.js`: Consistent page layout wrapper (title, subtitle, actions).
+- `frontend_web_app/src/App.js`, which defines the route table and composes the overall layout.
+- `frontend_web_app/src/navigation/navConfig.js`, which defines:
+  - The top tabs (contexts)
+  - The per-context module lists for the left sidebar
+  - A helper that infers the active context from the current URL path
 
-Shared state and services are provided by:
+The main UI shell uses:
 
-- `src/state/AppContext.js`: React context holding `api`, `ws`, `lastUpload`, and `validationResult`.
-- `src/services/apiClient.js`: HTTP wrapper with endpoint probing and mock fallback.
-- `src/services/wsClient.js`: WebSocket client scaffold with graceful fallback when not configured.
+- `src/components/TopNav.js`, which renders branding and the top-level context tabs (Backend Configuration / Health / WS).
+- `src/components/Sidebar.js`, which renders the context-aware left module menu. The sidebar changes strictly based on the active context; modules are not global across all tabs.
+- `src/components/PageShell.js`, which provides a consistent page wrapper (title, subtitle, actions) for each module view.
 
-## Primary use cases
+## Navigation model (top tabs, left modules, and routes)
 
-This UI is intended for power system engineers, protection engineers, and SCADA/OT integrators who need to:
+The UI is organized into three top-level contexts, shown as tabs in the top navigation bar:
 
-- Validate an IEC 61850 SCL configuration before commissioning or integration.
-- Identify semantic inconsistencies in LNs, datasets, and references that can cause runtime failures.
-- Compare and reason about cross-vendor alignment and mapping assumptions.
-- Review and improve SCADA naming conventions and point mappings.
-- Export a portable validation output (JSON download from the report page).
-- Explore workflows and screens without a live backend (offline mode).
+- Backend Configuration, using the `/backend/*` route namespace.
+- Health, using the `/health/*` route namespace.
+- WS, using the `/ws/*` route namespace.
+
+The left sidebar module menu is context-aware. When you switch top tabs, the sidebar items change to show only modules belonging to that context.
+
+### Context-to-module mapping
+
+Backend Configuration tab modules and routes:
+
+- File Upload: `/backend/upload`
+- LN Tree: `/backend/ln-tree`
+- Dataset Viewer: `/backend/datasets`
+- Results (Backend Results): `/backend/results`
+- Settings: `/backend/settings`
+
+Health tab modules and routes:
+
+- Anomaly Detection: `/health/anomaly`
+- Recommendations: `/health/recommendations`
+- Validation Report: `/health/report`
+- Interoperability Map: `/health/interop-map`
+- SCADA Table: `/health/scada`
+- Results (Health Results): `/health/results`
+
+WS tab modules and routes:
+
+- WS Connection Status: `/ws/status`
+- Reconnect WS: `/ws/reconnect`
+- WS Errors / Logs: `/ws/logs`
+
+### Default landing route
+
+The app’s default route (`/`) redirects to `/backend/upload`, which makes Backend Configuration the initial context.
+
+### Backward-compatible redirects (legacy routes)
+
+To avoid breaking existing links, `src/App.js` provides redirects from older, non-namespaced routes into the new route namespaces. For example:
+
+- `/upload` redirects to `/backend/upload`
+- `/ln-tree` redirects to `/backend/ln-tree`
+- `/datasets` redirects to `/backend/datasets`
+- `/settings` redirects to `/backend/settings`
+- `/anomaly` redirects to `/health/anomaly`
+- `/recommendations` redirects to `/health/recommendations`
+- `/report` redirects to `/health/report`
+- `/interop-map` redirects to `/health/interop-map`
+- `/scada` redirects to `/health/scada`
+- `/results` redirects to `/backend/results`
 
 ## Modules and what each one does
 
-### File Upload
+### File Upload (Backend Configuration)
 
 The File Upload page is the entry point for the SCL validation workflow. It allows you to:
 
@@ -84,25 +126,35 @@ The File Upload page is the entry point for the SCL validation workflow. It allo
 
 If the backend is not configured or endpoints are not reachable, the app falls back to mock upload/validation results so the UI remains explorable.
 
-### LN Tree
+### LN Tree (Backend Configuration)
 
 The LN Tree page renders a browsable hierarchy to help engineers understand which IEDs, logical devices, and logical nodes are present.
 
 It attempts to build a tree from the current `validationResult` using tolerant extraction logic. If no backend-derived structure is present, it derives an approximate tree from validation references, and finally falls back to a mock tree so the page still demonstrates expand/collapse, selection, and “hint” behavior.
 
-### Dataset Viewer
+### Dataset Viewer (Backend Configuration)
 
 The Dataset Viewer page is a scaffold for inspecting GOOSE/SV datasets and their entries.
 
 In the current implementation it shows mock dataset rows and uses whether a validation result exists to slightly vary statuses. It is designed to be expanded once backend dataset data is available.
 
-### Validation Report
+### Backend Results (Backend Configuration)
+
+Backend Results is a run-history view for backend-driven SCL validation runs and is available at `/backend/results`.
+
+It reads the browser’s persisted run history and filters it to show only SCL validation runs. It includes CSV/JSON export actions and a “clear history” action, and it computes basic aggregates (such as success rate and mocked/offline fallback usage) from the local history.
+
+### Settings (Backend Configuration)
+
+The Settings page surfaces runtime configuration and feature flags so users can confirm whether the app is running in backend-connected mode or offline mode, and which URLs are being used.
+
+### Validation Report (Health)
 
 The Validation Report page displays normalized validation “details” from `validationResult.data.details`.
 
 Each item is rendered with severity styling (error/warning/info). When a validation result exists, the page provides a “Download JSON” action that exports the current validation payload.
 
-### Interoperability Map
+### Interoperability Map (Health)
 
 The Interoperability Map page visualizes “source” to “target” mappings in a two-column graph (dependency-free SVG rendering).
 
@@ -110,27 +162,37 @@ It tries to extract mapping rows from multiple possible locations in the validat
 
 This view is intended for cross-vendor alignment and for spotting likely mismatches or low-confidence mappings.
 
-### SCADA Table
+### SCADA Table (Health)
 
 The SCADA Table provides an editable mapping table for SCADA point names to IEC 61850 LN and DO/DA paths.
 
 It tries to extract SCADA mapping rows from the validation payload. If missing, it derives rows heuristically from SCADA-related validation messages or falls back to mock rows. Rows are editable inline, and the page generates recommendations from both validation details and per-row heuristics (for example, non-standard point naming or suspicious LN/path formats). Edits are currently local to the browser session (not persisted).
 
-### Recommendations
+### Recommendations (Health)
 
 The Recommendations page is a dashboard-style view that summarizes overall posture and presents actionable cybersecurity guidance.
 
 It uses available signals when present, such as validation issue counts and any anomaly-related indicators that may be present in state. When no results exist, it still provides baseline recommendations. The goal is to present operational next steps rather than only listing raw validation items.
 
-### Anomaly Detection
+### Anomaly Detection (Health)
 
 The Anomaly Detection module is a standalone, client-side Excel outlier detection workflow. It is intentionally independent of IEC 61850 SCL validation.
 
 It can load a default bundled workbook (`/assets/Attack_Dataset.csv.xlsx`) or accept an uploaded Excel file, infer numeric columns, and run anomaly scoring using robust statistical techniques such as robust z-score (median/MAD) or classic z-score. Results are presented as ranked outliers with top contributing features and row previews.
 
-### Settings
+### Health Results (Health)
 
-The Settings page surfaces runtime configuration and feature flags so users can confirm whether the app is running in backend-connected mode or offline mode, and which URLs are being used.
+Health Results is a run-history view for health-oriented client-side runs and is available at `/health/results`.
+
+It reads the browser’s persisted run history and filters it to show only Excel anomaly detection runs. Like Backend Results, it includes CSV/JSON export actions and a “clear history” action, and it computes basic aggregates (such as success rate and anomalies flagged) from the local history.
+
+### WS pages (WS)
+
+The WS context provides pages for WebSocket diagnostics and control:
+
+- WS Connection Status (`/ws/status`) provides a connection state view.
+- Reconnect WS (`/ws/reconnect`) provides connect/disconnect control.
+- WS Errors / Logs (`/ws/logs`) shows WebSocket messages/events captured by the client.
 
 ## Offline mode vs backend-connected mode
 
@@ -155,6 +217,7 @@ The Excel anomaly detection workflow is represented as a sample anomaly summary 
 If you want to understand or extend the app, these files are good starting points:
 
 - Routing and layout: `frontend_web_app/src/App.js`
+- Navigation configuration: `frontend_web_app/src/navigation/navConfig.js`
 - Navigation components: `frontend_web_app/src/components/TopNav.js`, `frontend_web_app/src/components/Sidebar.js`
 - Shared state: `frontend_web_app/src/state/AppContext.js`
 - Backend integration: `frontend_web_app/src/services/apiClient.js`
@@ -162,6 +225,8 @@ If you want to understand or extend the app, these files are good starting point
 - Environment config: `frontend_web_app/src/config/env.js`
 - Pages/modules:
   - `frontend_web_app/src/pages/FileUploadPage.js`
+  - `frontend_web_app/src/pages/BackendResultsPage.js`
+  - `frontend_web_app/src/pages/HealthResultsPage.js`
   - `frontend_web_app/src/pages/ValidationReportPage.js`
   - `frontend_web_app/src/pages/LnTreePage.js`
   - `frontend_web_app/src/pages/DatasetViewerPage.js`
@@ -169,3 +234,4 @@ If you want to understand or extend the app, these files are good starting point
   - `frontend_web_app/src/pages/ScadaTablePage.js`
   - `frontend_web_app/src/pages/RecommendationsPage.js`
   - `frontend_web_app/src/pages/AnomalyDetectionPage.js`
+  - WS pages under `frontend_web_app/src/pages/ws/`
