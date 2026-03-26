@@ -313,6 +313,93 @@ export function createApiClient() {
     }
   }
 
+  /**
+   * AI analytics helpers (scaffold):
+   * We probe for common endpoint patterns and gracefully fall back to mock data when unavailable.
+   */
+  async function listAiAnalyticsJobs({ limit = 20 } = {}) {
+    if (!hasBackend) {
+      return { ok: true, mocked: true, data: mockResponse('/ai/analytics/jobs', { method: 'GET' }) };
+    }
+
+    const candidates = [
+      `/ai/analytics/jobs?limit=${encodeURIComponent(limit)}`,
+      `/api/ai/analytics/jobs?limit=${encodeURIComponent(limit)}`,
+      `/analytics/ai/jobs?limit=${encodeURIComponent(limit)}`,
+      `/api/analytics/ai/jobs?limit=${encodeURIComponent(limit)}`
+    ];
+
+    const { candidate, res } = await probeFirstOk(candidates, (p) => request(p, { method: 'GET' }));
+    if (res) return { ...res, endpoint: candidate };
+
+    return { ok: true, mocked: true, data: mockResponse('/ai/analytics/jobs', { method: 'GET' }) };
+  }
+
+  async function createAiAnalyticsJob({ uploadId, params } = {}) {
+    if (!hasBackend) {
+      return { ok: true, mocked: true, data: mockResponse('/ai/analytics/jobs', { method: 'POST', body: { uploadId, params } }) };
+    }
+
+    const candidates = [
+      `/ai/analytics/jobs`,
+      `/api/ai/analytics/jobs`,
+      `/analytics/ai/jobs`,
+      `/api/analytics/ai/jobs`
+    ];
+
+    const body = { uploadId, params };
+    const { candidate, res } = await probeFirstOk(candidates, (p) => request(p, { method: 'POST', body }));
+    if (res) return { ...res, endpoint: candidate };
+
+    return { ok: true, mocked: true, data: mockResponse('/ai/analytics/jobs', { method: 'POST', body }) };
+  }
+
+  async function getAiAnalyticsJobStatus({ jobId } = {}) {
+    if (!jobId) return { ok: false, status: 400, data: null, error: 'jobId is required.' };
+
+    if (!hasBackend) {
+      return { ok: true, mocked: true, data: mockResponse(`/ai/analytics/jobs/${jobId}/status`, { method: 'GET' }) };
+    }
+
+    const encoded = encodeURIComponent(jobId);
+    const candidates = [
+      `/ai/analytics/jobs/${encoded}/status`,
+      `/api/ai/analytics/jobs/${encoded}/status`,
+      `/analytics/ai/jobs/${encoded}/status`,
+      `/api/analytics/ai/jobs/${encoded}/status`,
+      `/ai/analytics/jobs/${encoded}`,
+      `/api/ai/analytics/jobs/${encoded}`
+    ];
+
+    const { candidate, res } = await probeFirstOk(candidates, (p) => request(p, { method: 'GET' }));
+    if (res) return { ...res, endpoint: candidate };
+
+    return { ok: true, mocked: true, data: mockResponse(`/ai/analytics/jobs/${jobId}/status`, { method: 'GET' }) };
+  }
+
+  async function getAiAnalyticsResult({ jobId } = {}) {
+    if (!jobId) return { ok: false, status: 400, data: null, error: 'jobId is required.' };
+
+    if (!hasBackend) {
+      return { ok: true, mocked: true, data: mockResponse(`/ai/analytics/jobs/${jobId}/result`, { method: 'GET' }) };
+    }
+
+    const encoded = encodeURIComponent(jobId);
+    const candidates = [
+      `/ai/analytics/jobs/${encoded}/result`,
+      `/api/ai/analytics/jobs/${encoded}/result`,
+      `/analytics/ai/jobs/${encoded}/result`,
+      `/api/analytics/ai/jobs/${encoded}/result`,
+      `/ai/analytics/results/${encoded}`,
+      `/api/ai/analytics/results/${encoded}`
+    ];
+
+    const { candidate, res } = await probeFirstOk(candidates, (p) => request(p, { method: 'GET' }));
+    if (res) return { ...res, endpoint: candidate };
+
+    return { ok: true, mocked: true, data: mockResponse(`/ai/analytics/jobs/${jobId}/result`, { method: 'GET' }) };
+  }
+
   return {
     hasBackend,
     healthcheckPath,
@@ -327,13 +414,101 @@ export function createApiClient() {
     getValidationStatus,
     pollValidationUntilDone,
 
+    // AI analytics scaffold
+    listAiAnalyticsJobs,
+    createAiAnalyticsJob,
+    getAiAnalyticsJobStatus,
+    getAiAnalyticsResult,
+
     getHealth: () => request(healthcheckPath, { method: 'GET' })
   };
 }
 
-function mockResponse(path, { method }) {
+function mockResponse(path, { method, body }) {
   if (path.includes('health')) {
     return { status: 'ok', mocked: true, ts: new Date().toISOString() };
+  }
+
+  // AI Analytics scaffold mocks
+  if (path.includes('/ai/analytics') || path.includes('/analytics/ai')) {
+    // List jobs
+    if (method === 'GET' && path.includes('jobs') && !path.includes('result') && !path.includes('status')) {
+      const now = Date.now();
+      return {
+        mocked: true,
+        jobs: [
+          { id: `mock-job-${now - 5000}`, title: 'Baseline semantic insights', state: 'completed', createdAt: new Date(now - 5000).toISOString() },
+          { id: `mock-job-${now - 15000}`, title: 'Cross-vendor mapping hints', state: 'completed', createdAt: new Date(now - 15000).toISOString() },
+          { id: `mock-job-${now - 35000}`, title: 'Dataset coverage analysis', state: 'running', createdAt: new Date(now - 35000).toISOString() }
+        ]
+      };
+    }
+
+    // Create job
+    if (method === 'POST' && path.includes('jobs')) {
+      const now = Date.now();
+      const uploadId = body?.uploadId || `mock-upload-${now}`;
+      return {
+        mocked: true,
+        job: {
+          id: `mock-job-${now}`,
+          title: 'New AI analytics job',
+          state: 'queued',
+          createdAt: new Date(now).toISOString(),
+          input: { uploadId, params: body?.params || {} }
+        }
+      };
+    }
+
+    // Job status
+    if (method === 'GET' && (path.includes('status') || (path.includes('jobs') && !path.includes('result')))) {
+      return {
+        mocked: true,
+        state: 'running',
+        progress: 42,
+        message: 'Mock job is running (no backend).'
+      };
+    }
+
+    // Job result
+    if (method === 'GET' && (path.includes('result') || path.includes('results'))) {
+      return {
+        mocked: true,
+        result: {
+          summary: {
+            insights: 3,
+            recommendations: 2,
+            confidence: 0.74
+          },
+          insights: [
+            {
+              id: 'insight-1',
+              title: 'Potential LN/DO mismatch',
+              detail: 'Detected vendor-specific naming differences that may cause semantic drift.',
+              confidence: 0.78
+            },
+            {
+              id: 'insight-2',
+              title: 'Dataset coverage gap',
+              detail: 'Some FCDAs referenced by SCADA mapping appear absent from GOOSE/SV datasets.',
+              confidence: 0.71
+            },
+            {
+              id: 'insight-3',
+              title: 'Normalization opportunity',
+              detail: 'Recommend harmonizing FC naming conventions across IED templates.',
+              confidence: 0.73
+            }
+          ],
+          recommendedActions: [
+            'Review interoperability map for unmapped points and normalize naming.',
+            'Re-run validation after updating datasets and SCADA mappings.'
+          ]
+        }
+      };
+    }
+
+    return { mocked: true, message: `Mock AI analytics response for ${method} ${path}.` };
   }
 
   if (path.includes('validate')) {

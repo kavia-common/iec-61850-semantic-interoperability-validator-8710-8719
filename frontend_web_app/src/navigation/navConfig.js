@@ -9,6 +9,7 @@
 export const TOP_TABS = [
   { key: 'backend', label: 'Backend Configuration', basePath: '/backend' },
   { key: 'health', label: 'Health', basePath: '/health' },
+  { key: 'ai', label: 'AI Analytics', basePath: '/ai' },
   { key: 'ws', label: 'WS', basePath: '/ws' }
 ];
 
@@ -28,6 +29,9 @@ export const CONTEXT_MODULES = {
     { to: '/health/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' },
     { to: '/health/results', title: 'Results', subtitle: 'Health run history', icon: '✓' }
   ],
+  ai: [
+    { to: '/ai/analytics', title: 'AI Analytics', subtitle: 'Jobs & results', icon: 'AI' }
+  ],
   ws: [
     { to: '/ws/status', title: 'WS Connection Status', subtitle: 'Live connection state', icon: '⇄' },
     { to: '/ws/reconnect', title: 'Reconnect WS', subtitle: 'Reconnect/disconnect control', icon: '⟲' },
@@ -44,6 +48,7 @@ export function getContextFromPathname(pathname) {
   /** Determine active top tab based on route prefix. */
   const p = pathname || '';
   if (p.startsWith('/health')) return 'health';
+  if (p.startsWith('/ai')) return 'ai';
   if (p.startsWith('/ws')) return 'ws';
   if (p.startsWith('/backend')) return 'backend';
 

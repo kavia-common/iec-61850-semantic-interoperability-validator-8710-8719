@@ -25,7 +25,15 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar" aria-label="Module navigation">
-      <div className="navSectionTitle">{contextKey === 'backend' ? 'Backend Configuration' : contextKey === 'health' ? 'Health' : 'WS'}</div>
+      <div className="navSectionTitle">
+        {contextKey === 'backend'
+          ? 'Backend Configuration'
+          : contextKey === 'health'
+            ? 'Health'
+            : contextKey === 'ai'
+              ? 'AI Analytics'
+              : 'WS'}
+      </div>
 
       <ul className={`navList sidebarFade${fadeIn ? ' sidebarFadeIn' : ''}`}>
         {modules.map((it) => (

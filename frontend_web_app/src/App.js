@@ -11,6 +11,7 @@ import DatasetViewerPage from './pages/DatasetViewerPage';
 import AnomalyDetectionPage from './pages/AnomalyDetectionPage';
 import ValidationReportPage from './pages/ValidationReportPage';
 import RecommendationsPage from './pages/RecommendationsPage';
+import AIAnalyticsPage from './pages/AIAnalyticsPage';
 import InteroperabilityMapPage from './pages/InteroperabilityMapPage';
 import ScadaTablePage from './pages/ScadaTablePage';
 import SettingsPage from './pages/SettingsPage';
@@ -54,6 +55,10 @@ function App() {
                   <Route path="/health/interop-map" element={<InteroperabilityMapPage />} />
                   <Route path="/health/scada" element={<ScadaTablePage />} />
                   <Route path="/health/results" element={<HealthResultsPage />} />
+
+                  {/* AI Analytics context */}
+                  <Route path="/ai" element={<Navigate to="/ai/analytics" replace />} />
+                  <Route path="/ai/analytics" element={<AIAnalyticsPage />} />
 
                   {/* WS context */}
                   <Route path="/ws/status" element={<WsStatusPage />} />
