@@ -7,6 +7,7 @@
  */
 
 export const TOP_TABS = [
+  { key: 'home', label: 'Home', basePath: '/' },
   { key: 'backend', label: 'Backend Configuration', basePath: '/backend' },
   { key: 'health', label: 'Health', basePath: '/health' },
   { key: 'ai', label: 'AI Analytics', basePath: '/ai' },
@@ -14,6 +15,8 @@ export const TOP_TABS = [
 ];
 
 export const CONTEXT_MODULES = {
+  // Global context: intentionally no sidebar modules (per requirements: no global modules shown).
+  home: [],
   backend: [
     { to: '/backend/upload', title: 'File Upload', subtitle: 'Ingest SCL files', icon: 'U' },
     { to: '/backend/ln-tree', title: 'LN Tree', subtitle: 'Browse Logical Nodes', icon: 'L' },
@@ -29,9 +32,7 @@ export const CONTEXT_MODULES = {
     { to: '/health/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' },
     { to: '/health/results', title: 'Results', subtitle: 'Health run history', icon: '✓' }
   ],
-  ai: [
-    { to: '/ai/analytics', title: 'AI Analytics', subtitle: 'Jobs & results', icon: 'AI' }
-  ],
+  ai: [{ to: '/ai/analytics', title: 'AI Analytics', subtitle: 'Jobs & results', icon: 'AI' }],
   ws: [
     { to: '/ws/status', title: 'WS Connection Status', subtitle: 'Live connection state', icon: '⇄' },
     { to: '/ws/reconnect', title: 'Reconnect WS', subtitle: 'Reconnect/disconnect control', icon: '⟲' },
@@ -47,6 +48,10 @@ export const CONTEXT_MODULES = {
 export function getContextFromPathname(pathname) {
   /** Determine active top tab based on route prefix. */
   const p = pathname || '';
+
+  // Global Home
+  if (p === '/' || p === '') return 'home';
+
   if (p.startsWith('/health')) return 'health';
   if (p.startsWith('/ai')) return 'ai';
   if (p.startsWith('/ws')) return 'ws';
@@ -56,7 +61,13 @@ export function getContextFromPathname(pathname) {
   if (p.startsWith('/upload') || p.startsWith('/ln-tree') || p.startsWith('/datasets') || p.startsWith('/settings')) {
     return 'backend';
   }
-  if (p.startsWith('/anomaly') || p.startsWith('/recommendations') || p.startsWith('/report') || p.startsWith('/interop-map') || p.startsWith('/scada')) {
+  if (
+    p.startsWith('/anomaly') ||
+    p.startsWith('/recommendations') ||
+    p.startsWith('/report') ||
+    p.startsWith('/interop-map') ||
+    p.startsWith('/scada')
+  ) {
     return 'health';
   }
 
@@ -69,6 +80,7 @@ export function getContextFromPathname(pathname) {
 // PUBLIC_INTERFACE
 export function getDefaultModulePathForContext(contextKey) {
   /** Get default module route for a context. */
+  if (contextKey === 'home') return '/';
   const list = CONTEXT_MODULES[contextKey] || [];
   return list[0]?.to || '/backend/upload';
 }

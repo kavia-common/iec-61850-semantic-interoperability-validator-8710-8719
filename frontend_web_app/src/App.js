@@ -5,6 +5,7 @@ import TopNav from './components/TopNav';
 import Sidebar from './components/Sidebar';
 import { AppProvider } from './state/AppContext';
 
+import HomePage from './pages/HomePage';
 import FileUploadPage from './pages/FileUploadPage';
 import LnTreePage from './pages/LnTreePage';
 import DatasetViewerPage from './pages/DatasetViewerPage';
@@ -38,8 +39,8 @@ function App() {
 
               <main className="main" role="main">
                 <Routes>
-                  {/* Default: land in Backend Configuration context */}
-                  <Route path="/" element={<Navigate to="/backend/upload" replace />} />
+                  {/* Global Home dashboard */}
+                  <Route path="/" element={<HomePage />} />
 
                   {/* Backend Configuration context */}
                   <Route path="/backend/upload" element={<FileUploadPage />} />

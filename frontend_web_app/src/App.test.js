@@ -89,21 +89,15 @@ beforeEach(() => {
 
 describe('App shell + routing', () => {
   test('renders top brand and module navigation (context-aware) and does not auto-connect ws', async () => {
-    // Default route redirects to /backend/upload, so the sidebar should show backend modules.
+    // Default route is now the global Home dashboard.
     renderAt('/');
 
     expect(screen.getByLabelText(/application brand/i)).toBeInTheDocument();
     expect(screen.getByText(/IEC 61850 SIV-Tool/i)).toBeInTheDocument();
 
+    // Sidebar remains context-aware; in Home context it has no global modules.
     const nav = screen.getByLabelText(/module navigation/i);
-
-    // In backend context, File Upload is present...
-    expect(within(nav).getByRole('link', { name: /File Upload/i })).toHaveAttribute(
-      'href',
-      '/backend/upload'
-    );
-
-    // ...but Validation Report is in the Health context, so it should NOT appear here.
+    expect(within(nav).queryByRole('link', { name: /File Upload/i })).not.toBeInTheDocument();
     expect(within(nav).queryByText(/Validation Report/i)).not.toBeInTheDocument();
 
     // Services are created once by AppProvider.
@@ -119,12 +113,12 @@ describe('App shell + routing', () => {
     expect(api.getHealth).toHaveBeenCalledTimes(0);
   });
 
-  test('default route (/) redirects to File Upload', async () => {
+  test('default route (/) renders Home dashboard', async () => {
     renderAt('/');
 
-    // FileUploadPage renders a PageShell labeled by its title
-    expect(await screen.findByLabelText('File Upload')).toBeInTheDocument();
-    expect(screen.getByText(/Upload IEC 61850 SCL files/i)).toBeInTheDocument();
+    // Home renders a PageShell labeled by its title
+    expect(await screen.findByLabelText('Home')).toBeInTheDocument();
+    expect(screen.getByText(/Global dashboard across upload and run history/i)).toBeInTheDocument();
   });
 
   test('sidebar navigation changes route to Settings', async () => {
