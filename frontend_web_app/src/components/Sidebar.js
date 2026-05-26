@@ -32,6 +32,8 @@ export default function Sidebar() {
             ? 'Backend Configuration'
             : contextKey === 'health'
               ? 'Health'
+              : contextKey === 'cyber'
+                ? 'Cybersecurity'
               : contextKey === 'ai'
                 ? 'AI Analytics'
                 : 'WS'}

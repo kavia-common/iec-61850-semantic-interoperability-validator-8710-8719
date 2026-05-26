@@ -20,6 +20,12 @@ import BackendResultsPage from './pages/BackendResultsPage';
 import HealthResultsPage from './pages/HealthResultsPage';
 import NotFoundPage from './pages/NotFoundPage';
 
+import CyberOverviewPage from './pages/cyber/CyberOverviewPage';
+import CyberDetectionPage from './pages/cyber/CyberDetectionPage';
+import CyberAlertPage from './pages/cyber/CyberAlertPage';
+import CyberTriagePage from './pages/cyber/CyberTriagePage';
+import CyberResolutionPage from './pages/cyber/CyberResolutionPage';
+
 import WsStatusPage from './pages/ws/WsStatusPage';
 import WsReconnectPage from './pages/ws/WsReconnectPage';
 import WsLogsPage from './pages/ws/WsLogsPage';
@@ -56,6 +62,14 @@ function App() {
                   <Route path="/health/interop-map" element={<InteroperabilityMapPage />} />
                   <Route path="/health/scada" element={<ScadaTablePage />} />
                   <Route path="/health/results" element={<HealthResultsPage />} />
+
+                  {/* Cybersecurity incident workflow context */} 
+                  <Route path="/cyber" element={<Navigate to="/cyber/overview" replace />} />
+                  <Route path="/cyber/overview" element={<CyberOverviewPage />} />
+                  <Route path="/cyber/detection" element={<CyberDetectionPage />} />
+                  <Route path="/cyber/alert" element={<CyberAlertPage />} />
+                  <Route path="/cyber/triage" element={<CyberTriagePage />} />
+                  <Route path="/cyber/resolution" element={<CyberResolutionPage />} />
 
                   {/* AI Analytics context */}
                   <Route path="/ai" element={<Navigate to="/ai/analytics" replace />} />

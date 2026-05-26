@@ -10,6 +10,7 @@ export const TOP_TABS = [
   { key: 'home', label: 'Home', basePath: '/' },
   { key: 'backend', label: 'Backend Configuration', basePath: '/backend' },
   { key: 'health', label: 'Health', basePath: '/health' },
+  { key: 'cyber', label: 'Cybersecurity', basePath: '/cyber' },
   { key: 'ai', label: 'AI Analytics', basePath: '/ai' },
   { key: 'ws', label: 'WS', basePath: '/ws' }
 ];
@@ -32,6 +33,13 @@ export const CONTEXT_MODULES = {
     { to: '/health/scada', title: 'SCADA Table', subtitle: 'Points & names', icon: 'S' },
     { to: '/health/results', title: 'Results', subtitle: 'Health run history', icon: '✓' }
   ],
+  cyber: [
+    { to: '/cyber/overview', title: 'Overview', subtitle: 'Workflow + queue', icon: 'C' },
+    { to: '/cyber/detection', title: 'Detection', subtitle: 'Signals & indicators', icon: 'D' },
+    { to: '/cyber/alert', title: 'Alerting', subtitle: 'Notifications & routing', icon: '!' },
+    { to: '/cyber/triage', title: 'Triage', subtitle: 'Investigate & decide', icon: 'T' },
+    { to: '/cyber/resolution', title: 'Resolution', subtitle: 'Contain & close', icon: '✓' }
+  ],
   ai: [{ to: '/ai/analytics', title: 'AI Analytics', subtitle: 'Jobs & results', icon: 'AI' }],
   ws: [
     { to: '/ws/status', title: 'WS Connection Status', subtitle: 'Live connection state', icon: '⇄' },
@@ -53,6 +61,7 @@ export function getContextFromPathname(pathname) {
   if (p === '/' || p === '') return 'home';
 
   if (p.startsWith('/health')) return 'health';
+  if (p.startsWith('/cyber')) return 'cyber';
   if (p.startsWith('/ai')) return 'ai';
   if (p.startsWith('/ws')) return 'ws';
   if (p.startsWith('/backend')) return 'backend';
